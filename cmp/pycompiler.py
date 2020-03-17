@@ -1,4 +1,5 @@
 import json
+from typing import Iterable, List
 
 
 class Symbol(object):
@@ -41,13 +42,6 @@ class NonTerminal(Symbol):
         self.productions = []
 
     def __imod__(self, other):
-
-        # My modification
-        if isinstance(other, str):
-            sentence = Sentence(*(self.Grammar[s] for s in other.split()))
-            p = Production(self, sentence)
-            self.Grammar.Add_Production(p)
-            return self
 
         if isinstance(other, Sentence):
             p = Production(self, other)
@@ -290,8 +284,7 @@ class Grammar:
         self.nonTerminals = []
         self.terminals = []
         self.startSymbol = None
-        # production type
-        self.pType = None
+        self.pType = None  # production type
         self.Epsilon = Epsilon(self)
         self.EOF = EOF(self)
 

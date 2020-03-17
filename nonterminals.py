@@ -1,6 +1,42 @@
-from cmp.pycompiler import Grammar
+from cmp.pycompiler import Grammar, Production, Sentence, NonTerminal
 
-G = Grammar()
+
+class ImprovedGrammar(Grammar):
+    def NonTerminal(self, name, startSymbol=False):
+        name = name.strip()
+        if not name:
+            raise Exception("Empty name")
+
+        term = ImprovedNonTerminal(name, self)
+
+        if startSymbol:
+
+            if self.startSymbol is None:
+                self.startSymbol = term
+            else:
+                raise Exception("Cannot define more than one start symbol.")
+
+        self.nonTerminals.append(term)
+        self.symbDict[name] = term
+        return term
+
+
+class ImprovedNonTerminal(NonTerminal):
+    def __imod__(self, other):
+        try:
+            return super().__imod__(other)
+        except TypeError:
+
+            if isinstance(other, str):
+                sentence = Sentence(*(self.Grammar[s] for s in other.split()))
+                p = Production(self, sentence)
+                self.Grammar.Add_Production(p)
+                return self
+
+            raise TypeError()
+
+
+G = ImprovedGrammar()
 
 Program = G.NonTerminal('program', startSymbol=True)
 ClassSet = G.NonTerminal('class-set')

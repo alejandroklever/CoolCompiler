@@ -263,4 +263,4 @@ def get_formatter():
             return f'RETURN {node.value if node.value is not None else ""}'
 
     printer = PrintVisitor()
-    return (lambda ast: printer.visit(ast))
+    return lambda ast: printer.visit(ast)

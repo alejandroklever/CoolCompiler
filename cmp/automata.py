@@ -150,9 +150,9 @@ class State:
         return hash(self.state)
 
     def __iter__(self):
-        yield from self._visit()
+        yield from self.__visit()
 
-    def _visit(self, visited=None):
+    def __visit(self, visited=None):
         if visited is None:
             visited = set()
         elif self in visited:
@@ -163,9 +163,9 @@ class State:
 
         for destinations in self.transitions.values():
             for node in destinations:
-                yield from node._visit(visited)
+                yield from node.__visit(visited)
         for node in self.epsilon_transitions:
-            yield from node._visit(visited)
+            yield from node.__visit(visited)
 
     def graph(self):
         G = pydot.Dot(rankdir='LR', margin=0.1)
@@ -194,11 +194,11 @@ class State:
     def _repr_svg_(self):
         try:
             return self.graph().create_svg().decode('utf8')
-        except:
+        except AttributeError:
             pass
 
-    def write_to(self, fname):
-        return self.graph().write_svg(fname)
+    def write_to(self, name):
+        return self.graph().write_svg(name)
 
 
 def multiline_formatter(state):

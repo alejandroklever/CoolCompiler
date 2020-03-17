@@ -1,5 +1,7 @@
+import time
+
+from cmp.grammalyzer.parsing import LALR1Parser
 from terminals import *
-from cmp.grammalyzer.parsing import LR1Parser, LALR1Parser
 
 Program %= 'class-set'
 
@@ -37,7 +39,6 @@ BodyExpr %= 'expr'
 #       end       #
 ###################
 
-
 ####################
 # Body-Expressions #
 ####################
@@ -47,25 +48,59 @@ Expr %= 'comp-expr'
 #       end       #
 ###################
 
+#######################
+# Compose-Expressions #
+#######################
 CompExpr %= 'comp-expr < sub-expr'
 CompExpr %= 'comp-expr <= sub-expr'
 CompExpr %= 'comp-expr = sub-expr'
 CompExpr %= 'sub-expr'
+###################
+#       end       #
+###################
 
+###################
+# Sub-Expressions #
+###################
 SubExpr %= 'sub-expr + term'
 SubExpr %= 'sub-expr - term'
 SubExpr %= 'term'
+###################
+#       end       #
+###################
 
+########
+# Term #
+########
 Term %= 'term * fact'
 Term %= 'term / fact'
 Term %= 'fact'
+#######
+# end #
+#######
 
+##########
+# Factor #
+##########
 Fact %= 'isvoid fact'
 Fact %= 'atom'
+##########
+#  end   #
+##########
 
+########
+# Atom #
+########
 Atom %= '~ atom'
 Atom %= 'particle'
+###################
+#       end       #
+###################
 
+
+############
+# Particle #
+############
 Particle %= 'id'
 Particle %= 'true'
 Particle %= 'false'
@@ -74,24 +109,59 @@ Particle %= 'string'
 Particle %= 'function-call'
 Particle %= 'new type'
 Particle %= '( expr )'
+###################
+#       end       #
+###################
 
+
+#########
+# Block #
+#########
 Block %= 'body-expr ;'
 Block %= 'block body-expr ;'
+#########
+#  end  #
+#########
 
+###############
+# Declaration #
+###############
 Declaration %= 'let id : type'
 Declaration %= 'let id : type <- expr'
 Declaration %= 'declaration , id : type'
 Declaration %= 'declaration , id : type <- expr'
+###############
+#     end     #
+###############
 
+#############
+# Case-List #
+#############
 CaseList %= 'id : type => expr ;'
 CaseList %= 'case-list id : type => expr ;'
+#############
+#    end    #
+#############
 
+#################
+# Function-Call #
+#################
 FunctionCall %= 'id ( expr-vector )'
 FunctionCall %= 'particle . id ( expr-vector )'
 FunctionCall %= 'particle @ type . id ( expr-vector )'
+#################
+#      end      #
+#################
 
+
+#####################
+# Expression-Vector #
+#####################
 ExprVector %= 'expr'
 ExprVector %= 'expr-vector , expr'
+#####################
+#        end        #
+#####################
 
 
 if __name__ == "__main__":
@@ -100,9 +170,8 @@ if __name__ == "__main__":
         print(repr(p))
     print()
 
+    t = time.time()
     parser = LALR1Parser(G)
-    print(len(parser.action))
-    if parser.conflict is not None:
-        print(parser.conflict.cType)
-        for item in parser.state_dict[parser.conflict.state].state:
-            print(item)
+    print('Build Parsing Time :', time.time() - t)
+    print('Action Entries     :', len(parser.action))
+    print('Parsing Conflicts  :', parser.conflict is not None)

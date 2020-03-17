@@ -58,3 +58,7 @@ function-call -> particle . id ( expr-vector )
 function-call -> particle @ type . id ( expr-vector )
 expr-vector -> expr
 expr-vector -> expr-vector , expr
+
+Build Parsing Time : 5.887415170669556
+Action Entries     : 1049
+Parsing Conflicts  : False
