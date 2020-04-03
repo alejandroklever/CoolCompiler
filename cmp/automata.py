@@ -1,3 +1,5 @@
+from typing import Any, Dict, Set, Callable, List
+
 try:
     import pydot
 except ModuleNotFoundError:
@@ -5,14 +7,15 @@ except ModuleNotFoundError:
 
 
 class State:
-    def __init__(self, state, final=False, formatter=lambda x: str(x), shape='circle'):
-        self.state = state
-        self.final = final
-        self.transitions = {}
-        self.epsilon_transitions = set()
+    def __init__(self, state: Any, final: bool = False, formatter: Callable[['State'], str] = lambda x: str(x),
+                 shape: str = 'circle'):
+        self.state: Any = state
+        self.final: bool = final
+        self.transitions: Dict[str, List['State']] = {}
+        self.epsilon_transitions: Set['State'] = set()
         self.tag = None
         self.formatter = formatter
-        self.shape = shape
+        self.shape: str = shape
 
     # The method name is set this way from compatibility issues.
     def set_formatter(self, value, attr='formatter', visited=None):
@@ -33,18 +36,18 @@ class State:
     def has_transition(self, symbol):
         return symbol in self.transitions
 
-    def add_transition(self, symbol, state):
+    def add_transition(self, symbol: str, state: 'State'):
         try:
             self.transitions[symbol].append(state)
         except KeyError:
             self.transitions[symbol] = [state]
         return self
 
-    def add_epsilon_transition(self, state):
+    def add_epsilon_transition(self, state: 'State'):
         self.epsilon_transitions.add(state)
         return self
 
-    def recognize(self, string):
+    def recognize(self, string: str):
         states = self.epsilon_closure
         for symbol in string:
             states = self.move_by_state(symbol, *states)
@@ -52,7 +55,7 @@ class State:
 
         return any(s.final for s in states)
 
-    def to_deterministic(self, formatter=lambda x: str(x)):
+    def to_deterministic(self, formatter=lambda x: str(x)) -> 'State':
         closure = self.epsilon_closure
         start = State(tuple(closure), any(s.final for s in closure), formatter)
 
@@ -82,7 +85,7 @@ class State:
         return start
 
     @staticmethod
-    def from_nfa(nfa, get_states=False):
+    def from_nfa(nfa, get_states: bool = False) -> 'State':
         states = []
         for n in range(nfa.states):
             state = State(n, n in nfa.finals)
@@ -102,7 +105,7 @@ class State:
 
     @staticmethod
     def epsilon_closure_by_state(*states):
-        closure = {state for state in states}
+        closure = set(states)
 
         n = 0
         while n != len(closure):

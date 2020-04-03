@@ -25,15 +25,15 @@ class LRConflict:
 
 class LLConflictType(Enum):
     """
-    Enum for mark the type of a ll parser
+    Enum for mark the type of ll parser
     """
     FirstFirst = auto()
     FollowFollow = auto()
 
 
 class LLConflict:
-    def __init__(self, nontermial, terminal, ctype):
-        self.nonterminal = nontermial
+    def __init__(self, nonterminal, terminal, ctype):
+        self.nonterminal = nonterminal
         self.terminal = terminal
         self.cType = ctype
 

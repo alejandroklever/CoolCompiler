@@ -126,25 +126,25 @@ def nfa_to_dfa(automaton):
 
         for symbol in automaton.vocabulary:
             state_move = move(automaton, state, symbol)
-            e_clousure = epsilon_closure(automaton, state_move)
+            e_closure = epsilon_closure(automaton, state_move)
 
-            if e_clousure == set():
+            if e_closure == set():
                 continue
 
-            if e_clousure not in states:
-                e_clousure.id = states[-1].id + 1
-                e_clousure.is_final = any(s in automaton.finals for s in e_clousure)
+            if e_closure not in states:
+                e_closure.id = states[-1].id + 1
+                e_closure.is_final = any(s in automaton.finals for s in e_closure)
 
-                states.append(e_clousure)
-                pending.append(e_clousure)
+                states.append(e_closure)
+                pending.append(e_closure)
             else:
-                e_clousure = next(s for s in states if s == e_clousure)
+                e_closure = next(s for s in states if s == e_closure)
 
             try:
-                transitions[state.id, symbol]
+                var = transitions[state.id, symbol]
                 assert False, 'Invalid DFA!!!'
             except KeyError:
-                transitions[state.id, symbol] = e_clousure.id
+                transitions[state.id, symbol] = e_closure.id
 
     finals = [state.id for state in states if state.is_final]
     dfa = DFA(len(states), finals, transitions)

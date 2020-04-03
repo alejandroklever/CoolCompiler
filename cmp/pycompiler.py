@@ -1,12 +1,14 @@
 import json
-from typing import Iterable, List
+from typing import List, FrozenSet, Optional, Union
+
+ProductionList = List[Union['Production', 'AttributeProduction']]
 
 
-class Symbol(object):
+class Symbol:
 
-    def __init__(self, name, grammar):
-        self.Name = name
-        self.Grammar = grammar
+    def __init__(self, name: str, grammar: 'Grammar'):
+        self.Name: str = name
+        self.Grammar: 'Grammar' = grammar
 
     def __str__(self):
         return self.Name
@@ -14,7 +16,7 @@ class Symbol(object):
     def __repr__(self):
         return repr(self.Name)
 
-    def __add__(self, other):
+    def __add__(self, other: 'Symbol'):
         if isinstance(other, Symbol):
             return Sentence(self, other)
 
@@ -39,43 +41,49 @@ class NonTerminal(Symbol):
 
     def __init__(self, name, grammar):
         super().__init__(name, grammar)
-        self.productions = []
+        self.productions: ProductionList = []
 
     def __imod__(self, other):
+        if isinstance(other, str):
+            p = Production(self, Sentence(*(self.Grammar[s] for s in other.split())))
+            self.Grammar.AddProduction(p)
+            return self
+
+        if isinstance(other, Symbol):
+            p = Production(self, Sentence(other))
+            self.Grammar.AddProduction(p)
+            return self
 
         if isinstance(other, Sentence):
             p = Production(self, other)
-            self.Grammar.Add_Production(p)
+            self.Grammar.AddProduction(p)
             return self
 
         if isinstance(other, tuple):
             assert len(other) > 1
+
+            if isinstance(other[0], str):
+                other = (Sentence(*(self.Grammar[s] for s in other[0].split())),) + other[1:]
 
             if len(other) == 2:
                 other += (None,) * len(other[0])
 
             assert len(other) == len(other[0]) + 2, 'Debe definirse una, y solo una, regla por cada símbolo de la ' \
                                                     'producción '
-            # assert len(other) == 2, "Tiene que ser una Tupla de 2 elementos (sentence, attribute)"
 
             if isinstance(other[0], Symbol) or isinstance(other[0], Sentence):
                 p = AttributeProduction(self, other[0], other[1:])
             else:
                 raise Exception("")
 
-            self.Grammar.Add_Production(p)
-            return self
-
-        if isinstance(other, Symbol):
-            p = Production(self, Sentence(other))
-            self.Grammar.Add_Production(p)
+            self.Grammar.AddProduction(p)
             return self
 
         if isinstance(other, SentenceList):
 
             for s in other:
                 p = Production(self, s)
-                self.Grammar.Add_Production(p)
+                self.Grammar.AddProduction(p)
 
             return self
 
@@ -96,7 +104,7 @@ class NonTerminal(Symbol):
 
 class Terminal(Symbol):
 
-    def __init__(self, name, grammar):
+    def __init__(self, name: str, grammar: 'Grammar'):
         super().__init__(name, grammar)
 
     @property
@@ -195,7 +203,7 @@ class SentenceList:
 
 class Epsilon(Terminal, Sentence):
 
-    def __init__(self, grammar):
+    def __init__(self, grammar: 'Grammar'):
         super().__init__('epsilon', grammar)
 
     def __str__(self):
@@ -227,8 +235,8 @@ class Epsilon(Terminal, Sentence):
 class Production:
 
     def __init__(self, nonTerminal, sentence):
-        self.Left = nonTerminal
-        self.Right = sentence
+        self.Left: NonTerminal = nonTerminal
+        self.Right: Sentence = sentence
 
     def __str__(self):
         return '%s := %s' % (self.Left, self.Right)
@@ -280,17 +288,17 @@ class AttributeProduction(Production):
 
 class Grammar:
     def __init__(self):
-        self.Productions = []
-        self.nonTerminals = []
-        self.terminals = []
-        self.startSymbol = None
-        self.pType = None  # production type
-        self.Epsilon = Epsilon(self)
-        self.EOF = EOF(self)
+        self.Productions: ProductionList = []
+        self.nonTerminals: List[NonTerminal] = []
+        self.terminals: List[Terminal] = []
+        self.startSymbol: NonTerminal = None
+        self.pType: type = None  # production type
+        self.Epsilon: Epsilon = Epsilon(self)
+        self.EOF: EOF = EOF(self)
 
         self.symbDict = {'$': self.EOF}
 
-    def NonTerminal(self, name, startSymbol=False):
+    def NonTerminal(self, name: str, startSymbol: bool = False):
 
         name = name.strip()
         if not name:
@@ -309,13 +317,13 @@ class Grammar:
         self.symbDict[name] = term
         return term
 
-    def NonTerminals(self, names):
+    def NonTerminals(self, names: str):
 
         ans = tuple((self.NonTerminal(x) for x in names.strip().split()))
 
         return ans
 
-    def Add_Production(self, production):
+    def AddProduction(self, production: Production):
 
         if len(self.Productions) == 0:
             self.pType = type(production)
@@ -325,7 +333,7 @@ class Grammar:
         production.Left.productions.append(production)
         self.Productions.append(production)
 
-    def Terminal(self, name):
+    def Terminal(self, name: str) -> Terminal:
 
         name = name.strip()
         if not name:
@@ -336,7 +344,7 @@ class Grammar:
         self.symbDict[name] = term
         return term
 
-    def Terminals(self, names):
+    def Terminals(self, names: str):
 
         ans = tuple((self.Terminal(x) for x in names.strip().split()))
 
@@ -456,12 +464,12 @@ class Grammar:
 
 class Item:
 
-    def __init__(self, production, pos, lookaheads=None):
+    def __init__(self, production: Production, pos: int, lookaheads: List[Symbol] = None):
         if lookaheads is None:
             lookaheads = []
-        self.production = production
-        self.pos = pos
-        self.lookaheads = frozenset(look for look in lookaheads)
+        self.production: Production = production
+        self.pos: int = pos
+        self.lookaheads: FrozenSet[Symbol] = frozenset(look for look in lookaheads)
 
     def __str__(self):
         s = str(self.production.Left) + " -> "
@@ -491,25 +499,25 @@ class Item:
         return hash((self.production, self.pos, self.lookaheads))
 
     @property
-    def IsReduceItem(self):
+    def IsReduceItem(self) -> bool:
         return len(self.production.Right) == self.pos
 
     @property
-    def NextSymbol(self):
+    def NextSymbol(self) -> Optional[Symbol]:
         if self.pos < len(self.production.Right):
             return self.production.Right[self.pos]
         else:
             return None
 
-    def NextItem(self):
+    def NextItem(self) -> Optional['Item']:
         if self.pos < len(self.production.Right):
             return Item(self.production, self.pos + 1, self.lookaheads)
         else:
             return None
 
-    def Preview(self, skip=1):
+    def Preview(self, skip=1) -> List[Symbol]:
         unseen = self.production.Right[self.pos + skip:]
         return [unseen + (lookahead,) for lookahead in self.lookaheads]
 
-    def Center(self):
+    def Center(self) -> 'Item':
         return Item(self.production, self.pos)
