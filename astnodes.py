@@ -3,8 +3,8 @@ class Node:
 
 
 class ProgramNode(Node):
-    def __init__(self, declarations):
-        self.declarations = declarations
+    def __init__(self, class_list):
+        self.class_list = class_list
 
 
 class DeclarationNode(Node):
@@ -22,7 +22,7 @@ class ClassDeclarationNode(DeclarationNode):
         self.features = features
 
 
-class FuncDeclarationNode(DeclarationNode):
+class MethodDeclarationNode(DeclarationNode):
     def __init__(self, idx, params, return_type, body):
         self.id = idx
         self.params = params
@@ -80,7 +80,7 @@ class AssignNode(ExpressionNode):
         self.expr = expr
 
 
-class CallNode(ExpressionNode):
+class MethodCallNode(ExpressionNode):
     def __init__(self, idx, args, obj=None, typex=None):
         self.obj = obj
         self.id = idx
@@ -99,15 +99,11 @@ class BinaryNode(ExpressionNode):
         self.right = right
 
 
-class TernaryNode(ExpressionNode):
-    def __init__(self, left, center, right):
-        self.left = left
-        self.right = right
-        self.center = center
-
-
-class ConditionalNode(TernaryNode):
-    pass
+class ConditionalNode(ExpressionNode):
+    def __init__(self, ifx, then, elsex):
+        self.ifx = ifx
+        self.then = then
+        self.elsex = elsex
 
 
 class ConstantNumNode(AtomicNode):
@@ -122,15 +118,15 @@ class InstantiateNode(AtomicNode):
     pass
 
 
+class IntegerNode(AtomicNode):
+    pass
+
+
 class StringNode(AtomicNode):
     pass
 
 
-class TrueNode(AtomicNode):
-    pass
-
-
-class FalseNode(AtomicNode):
+class BooleanNode(AtomicNode):
     pass
 
 
@@ -138,7 +134,7 @@ class NegationNode(AtomicNode):
     pass
 
 
-class IntegerComplementNode(AtomicNode):
+class ComplementNode(AtomicNode):
     pass
 
 

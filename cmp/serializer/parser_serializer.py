@@ -3,7 +3,7 @@ import inspect
 TEMPLATE = """from abc import ABC
 from cmp.parsing import ShiftReduceParser
 from cmp.pycompiler import AttributeProduction, Sentence
-from ast import *
+from astnodes import *
 
 
 class %s(ShiftReduceParser, ABC):

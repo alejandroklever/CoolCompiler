@@ -1,5 +1,6 @@
 import time
 
+from astnodes import *
 from cmp.parsing import LALR1Parser, Lexer
 from cmp.pycompiler import Grammar
 
@@ -25,6 +26,7 @@ comp = G.NonTerminal('comp')
 arith = G.NonTerminal('arith')
 term = G.NonTerminal('term')
 factor = G.NonTerminal('factor')
+atom = G.NonTerminal('atom')
 
 ###############
 # identifiers #
@@ -93,84 +95,89 @@ G.Terminal('not')
 ############
 # Specials #
 ############
+G.Terminal('tab')
 G.Terminal('space')
 G.Terminal('newline')
 
 ###############
 # Productions #
 ###############
-program %= 'class-set', lambda s: None
+program %= 'class-set', lambda s: ProgramNode(s[1])
 
-class_set %= 'class-def', lambda s: None
-class_set %= 'class-def class-set', lambda s: None
+class_set %= 'class-def', lambda s: [s[1]]
+class_set %= 'class-def class-set', lambda s: [s[1]] + s[2]
 
-class_def %= 'class type { feature-list }', lambda s: None
-class_def %= 'class type inherits type { feature-list }', lambda s: None
+class_def %= 'class type { }', lambda s: ClassDeclarationNode(s[2], [])
+class_def %= 'class type inherits { }', lambda s: ClassDeclarationNode(s[2], [], s[4])
+class_def %= 'class type { feature-list }', lambda s: ClassDeclarationNode(s[2], s[4])
+class_def %= 'class type inherits type { feature-list }', lambda s: ClassDeclarationNode(s[2], s[6], s[4])
 
-feature_list %= 'attribute ;', lambda s: None
-feature_list %= 'method ;', lambda s: None
-feature_list %= 'attribute ; feature-list', lambda s: None
-feature_list %= 'method ; feature-list', lambda s: None
+feature_list %= 'attribute ;', lambda s: [s[1]]
+feature_list %= 'method ;', lambda s: [s[1]]
+feature_list %= 'attribute ; feature-list', lambda s: [s[1]] + s[3]
+feature_list %= 'method ; feature-list', lambda s: [s[1]] + s[3]
 
-attribute %= 'id : type', lambda s: None
-attribute %= 'id : type <- expr', lambda s: None
+attribute %= 'id : type', lambda s: AttrDeclarationNode(s[1], s[3])
+attribute %= 'id : type <- expr', lambda s: AttrDeclarationNode(s[1], s[3], s[5])
 
-method %= 'id ( ) : type { expr }', lambda s: None
-method %= 'id ( param-list ) : type { expr }', lambda s: None
+method %= 'id ( ) : type { expr }', lambda s: MethodDeclarationNode(s[1], [], s[5], s[7])
+method %= 'id ( param-list ) : type { expr }', lambda s: MethodDeclarationNode(s[1], s[3], s[6], s[8])
 
-param_list %= 'id : type', lambda s: None
-param_list %= 'id : type , param-list', lambda s: None
+param_list %= 'id : type', lambda s: [ParamNode(s[1], s[3])]
+param_list %= 'id : type , param-list', lambda s: [ParamNode(s[1], s[3])] + s[5]
 
-# TODO: Fix operators precedence
-expr %= 'id <- expr', lambda s: None
-expr %= '{ block }', lambda s: None
-expr %= 'if expr then expr else expr fi', lambda s: None
-expr %= 'while expr loop expr pool', lambda s: None
-expr %= 'let declaration-list in expr', lambda s: None
-expr %= 'case expr of case-list esac', lambda s: None
-expr %= 'not expr', lambda s: None
-expr %= 'isvoid expr', lambda s: None
-expr %= '~ expr', lambda s: None
-expr %= 'comp', lambda s: None
+expr %= 'id <- expr', lambda s: AssignNode(s[1], s[3])
+expr %= '{ block }', lambda s: BlockNode(s[2])
+expr %= 'if expr then expr else expr fi', lambda s: ConditionalNode(s[2], s[4], s[6])
+expr %= 'while expr loop expr pool', lambda s: WhileNode(s[2], s[4])
+expr %= 'let declaration-list in expr', lambda s: LetNode(s[2], s[4])
+expr %= 'case expr of case-list esac', lambda s: CasesNode(s[2], s[4])
+expr %= 'not expr', lambda s: NegationNode(s[2])
+expr %= 'comp', lambda s: s[1]
 
-comp %= 'comp < arith', lambda s: None
-comp %= 'comp <= arith', lambda s: None
-comp %= 'comp = arith', lambda s: None
-comp %= 'arith', lambda s: None
+comp %= 'comp < arith', lambda s: LessNode(s[1], s[3])
+comp %= 'comp <= arith', lambda s: LessEqualNode(s[1], s[3])
+comp %= 'comp = arith', lambda s: EqualNode(s[1], s[3])
+comp %= 'arith', lambda s: s[1]
 
-arith %= 'arith + term', lambda s: None
-arith %= 'arith - term', lambda s: None
-arith %= 'term', lambda s: None
+arith %= 'arith + term', lambda s: PlusNode(s[1], s[3])
+arith %= 'arith - term', lambda s: MinusNode(s[1], s[3])
+arith %= 'term', lambda s: s[1]
 
-term %= 'term * factor', lambda s: None
-term %= 'term / factor', lambda s: None
-term %= 'factor', lambda s: None
+term %= 'term * factor', lambda s: StarNode(s[1], s[3])
+term %= 'term / factor', lambda s: DivNode(s[1], s[3])
+term %= 'factor', lambda s: s[1]
 
-factor %= 'id', lambda s: None
-factor %= 'true', lambda s: None
-factor %= 'false', lambda s: None
-factor %= 'integer', lambda s: None
-factor %= 'string', lambda s: None
-factor %= 'function-call', lambda s: None
-factor %= 'new type', lambda s: None
+factor %= 'isvoid factor', lambda s: IsVoidNode(s[2])
+factor %= '~ factor', lambda s: IsVoidNode(s[2])
+factor %= 'atom', lambda s: s[1]
 
-block %= 'expr ;', lambda s: None
-block %= 'expr ; block', lambda s: None
+atom %= 'id', lambda s: VariableNode(s[1])
+atom %= 'true', lambda s: BooleanNode(s[1])
+atom %= 'false', lambda s: BooleanNode(s[1])
+atom %= 'integer', lambda s: IntegerNode(s[1])
+atom %= 'string', lambda s: StringNode(s[1])
+atom %= 'function-call', lambda s: s[1]
+atom %= 'new type', lambda s: InstantiateNode(s[2])
+atom %= '( expr )', lambda s: s[2]
 
-declaration_list %= 'id : type', lambda s: None
-declaration_list %= 'id : type <- expr', lambda s: None
-declaration_list %= 'id : type , declaration-list', lambda s: None
-declaration_list %= 'id : type , declaration-list', lambda s: None
+block %= 'expr ;', lambda s: [s[1]]
+block %= 'expr ; block', lambda s: [s[1]] + s[3]
 
-case_list %= 'id : type => expr ;', lambda s: None
-case_list %= 'case-list id : type => expr ;', lambda s: None
+declaration_list %= 'id : type', lambda s: [VarDeclarationNode(s[1], s[3])]
+declaration_list %= 'id : type <- expr', lambda s: [VarDeclarationNode(s[1], s[3], s[5])]
+declaration_list %= 'id : type , declaration-list', lambda s: [VarDeclarationNode(s[1], s[3])] + s[5]
+declaration_list %= 'id : type <- expr , declaration-list', lambda s: [VarDeclarationNode(s[1], s[3], s[5])] + s[7]
 
-function_call %= 'id ( expr-list )', lambda s: None
-function_call %= 'factor . id ( expr-list )', lambda s: None
-function_call %= 'factor @ type . id ( expr-list )', lambda s: None
+case_list %= 'id : type => expr ;', lambda s: [SingleCaseNode(s[1], s[3], s[5])]
+case_list %= 'id : type => expr ; case-list', lambda s: [SingleCaseNode(s[1], s[3], s[5])] + s[7]
 
-expr_list %= 'expr', lambda s: None
-expr_list %= 'expr , expr-list', lambda s: None
+function_call %= 'id ( expr-list )', lambda s: MethodCallNode(s[1], s[3])
+function_call %= 'atom . id ( expr-list )', lambda s: MethodCallNode(s[3], s[5], s[1])
+function_call %= 'atom @ type . id ( expr-list )', lambda s: MethodCallNode(s[3], s[5], s[1])
+
+expr_list %= 'expr', lambda s: [s[1]]
+expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
 
 
 def cool_grammar():
@@ -224,7 +231,8 @@ def cool_lexer():
         (G['end'], 'end'),
         (G['space'], ' +'),
         (G['newline'], '\n+'),
-        (G['integer'], '-?[1-9][0-9]+'),
+        (G['tab'], '\t+'),
+        (G['integer'], '-?[1-9][0-9]*'),
         (G['type'], '[A-Z][a-zA-Z0-9]*'),
         (G['id'], '[a-z][a-zA-Z0-9]*'),
         (G['string'], '"[ -~]*"'),

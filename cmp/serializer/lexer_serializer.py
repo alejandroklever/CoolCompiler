@@ -62,12 +62,19 @@ class LexerSerializer:
                 symbols = s.transitions
                 for symbol in symbols:
                     key_symbol = symbol
+
                     if symbol == "\"":
                         key_symbol = "\\\""
+
                     elif symbol == "\\":
                         key_symbol = "\\\\"
+
                     elif symbol == "\n":
                         key_symbol = "\\n"
+
+                    elif symbol == "\t":
+                        key_symbol = "\\t"
+
                     table += f'({s.state}, "{key_symbol}"): {[d.state for d in s.transitions[symbol]]}, '
 
                 if s.final:

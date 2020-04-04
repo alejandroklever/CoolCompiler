@@ -175,7 +175,8 @@ class ShiftReduceParser:
             if self.verbose:
                 print(stack, '<---||--->', tokens[cursor:])
 
-            assert (state, lookahead.token_type) in self.action, 'Parsing Error...'
+            assert (state, lookahead.token_type) in self.action, f'Parsing Error in ' \
+                f'{(state, lookahead.lex, lookahead.token_type)} '
 
             action, tag = self.action[state, lookahead.token_type]
 
