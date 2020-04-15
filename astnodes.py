@@ -1,4 +1,6 @@
 class Node:
+    row = 0
+    col = 0
     pass
 
 

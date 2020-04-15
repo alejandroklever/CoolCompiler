@@ -185,57 +185,6 @@ def cool_parser():
     return LALR1Parser(G)
 
 
-def cool_lexer():
-    return Lexer([
-        (G['+'], '\+'),
-        (G['-'], '-'),
-        (G['*'], '\*'),
-        (G['/'], '/'),
-        (G['<='], '<='),
-        (G['<'], '<'),
-        (G['='], '='),
-        (G['~'], '~'),
-        (G['not'], 'not'),
-        (G['{'], '{'),
-        (G['}'], '}'),
-        (G['('], '\('),
-        (G[')'], '\)'),
-        (G[','], ','),
-        (G['.'], '.'),
-        (G['@'], '@'),
-        (G[':'], ':'),
-        (G[';'], ';'),
-        (G['<-'], '<-'),
-        (G['=>'], '=>'),
-        (G['class'], 'class'),
-        (G['inherits'], 'inherits'),
-        (G['if'], 'if'),
-        (G['then'], 'then'),
-        (G['else'], 'else'),
-        (G['fi'], 'fi'),
-        (G['while'], 'while'),
-        (G['loop'], 'loop'),
-        (G['pool'], 'pool'),
-        (G['let'], 'let'),
-        (G['in'], 'in'),
-        (G['case'], 'case'),
-        (G['esac'], 'esac'),
-        (G['of'], 'of'),
-        (G['new'], 'new'),
-        (G['isvoid'], 'isvoid'),
-        (G['true'], 'true'),
-        (G['false'], 'false'),
-        (G['end'], 'end'),
-        (G['space'], ' +'),
-        (G['newline'], '\n+'),
-        (G['tab'], '\t+'),
-        (G['integer'], '-?[1-9][0-9]*'),
-        (G['type'], '[A-Z][a-zA-Z0-9]*'),
-        (G['id'], '[a-z][a-zA-Z0-9]*'),
-        (G['string'], '"[ -~]*"'),
-    ], G.EOF)
-
-
 if __name__ == '__main__':
     t = time.time()
     parser = cool_parser()

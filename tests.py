@@ -37,7 +37,7 @@ class Tester:
         :return:
         """
         tokens = Tester.tokenize(script, print_tokens=False)
-        _, ast = parser(tokens, get_ast=True)
+        ast = parser(tokens)
         print(ast)
 
 

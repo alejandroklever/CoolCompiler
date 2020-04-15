@@ -1,67 +1,43 @@
-from typing import Tuple, List, Any
+import re
 
-from cmp.automata import State
-from cmp.regex import Regex
 from cmp.utils import Token
 
 
 class Lexer:
-    def __init__(self, table, eof):
+    def __init__(self, table, eof, skip_chars=None):
+        if skip_chars is None:
+            skip_chars = set()
+        self.skip_chars = skip_chars
+        self.table = {**table, **{'$': (eof, '$')}}
+        self.pattern = self.__build_regex(table)
         self.eof = eof
-        self.regexs = self._build_regexs(table)
-        self.automaton = self._build_automaton()
 
-    def _build_regexs(self, table: List[Tuple[Any, str]]) -> List[State]:
-        regexs = []
-        for n, (token_type, regex) in enumerate(table):
-            automaton = Regex.build_automaton(regex)
-            automaton, states = State.from_nfa(automaton, get_states=True)
+    @staticmethod
+    def __build_regex(table):
+        r = '|'.join([f'(?P<{alias}>{regex})' for alias, (_, regex) in table.items()])
+        return re.compile(r)
 
-            for state in states:
-                if state.final:
-                    state.tag: Tuple[int, Any] = (n, token_type)
-
-            regexs.append(automaton)
-
-        return regexs
-
-    def _build_automaton(self) -> State:
-        start: State = State('start')
-        regexs = self.regexs
-
-        for regex in regexs:
-            start.add_epsilon_transition(regex)
-
-        return start.to_deterministic()
-
-    def _walk(self, string: str):
-        state = self.automaton
-        final = state if state.final else None
-        final_lex = lex = ''
-
-        for symbol in string:
-            try:
-                state = state[symbol][0]
-                lex += symbol
-                final, final_lex = (state, lex) if state.final else (final, final_lex)
-            except TypeError:
-                break
-
-        return final, final_lex
-
-    def _tokenize(self, text: str):
-        while text != '':
-            state, lex = self._walk(text)
-
-            if state is not None:
-                text = text[len(lex):]
-                token_type = min((s for s in state.state if s.final), key=lambda x: x.tag).tag[1]
-                yield lex, token_type
-
+    def __tokenize(self, text):
+        row = 0
+        col = 0
+        pos = 0
+        while pos < len(text):
+            if text[pos] == ' ':
+                pos += 1
+                col += 1
+            elif text[pos] == '\t':
+                pos += 1
+                col += 4
+            elif text[pos] == '\n':
+                pos += 1
+                row += 1
+                col = 0
             else:
-                return None
+                match = self.pattern.match(text, pos=pos)
+                yield match.group(), match.lastgroup, row, col
+                pos = match.end()
+                col += len(match.group())
+        yield '$', '$'
 
-        yield '$', self.eof
-
-    def __call__(self, text: str):
-        return [Token(lex, token_type) for lex, token_type in self._tokenize(text)]
+    def __call__(self, text):
+        return [Token(lex, self.table[alias][0], row, col) for lex, alias, row, col in self.__tokenize(text)]

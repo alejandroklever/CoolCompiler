@@ -1,4 +1,5 @@
 from enum import auto, Enum
+from typing import Any, List
 
 from .automatas import build_lr0_automaton, build_lr1_automaton, build_larl1_automaton
 from .utils import compute_firsts, compute_follows
@@ -6,7 +7,7 @@ from .utils import compute_firsts, compute_follows
 
 class LRConflictType(Enum):
     """
-    Enum for mark the type of a lr-family parser
+    Enum for mark the type of lr-family parser
     """
     ReduceReduce = auto()
     ShiftReduce = auto()
@@ -120,7 +121,7 @@ class ShiftReduceParser:
     REDUCE = 'REDUCE'
     OK = 'OK'
 
-    def __init__(self, G, verbose=False):
+    def __init__(self, G):
         self.G = G
         self.augmented_G = G.AugmentedGrammar(True)
         self.firsts = compute_firsts(self.augmented_G)
@@ -129,7 +130,6 @@ class ShiftReduceParser:
         self.state_dict = {}
         self.conflict = None
 
-        self.verbose = verbose
         self.action = {}
         self.goto = {}
         self._build_parsing_table()
@@ -142,8 +142,6 @@ class ShiftReduceParser:
         automaton = self.automaton
 
         for i, node in enumerate(automaton):
-            if self.verbose:
-                print(i, '\t', '\n\t '.join(str(x) for x in node.state), '\n')
             node.idx = i
             self.state_dict[i] = node
 
@@ -164,16 +162,13 @@ class ShiftReduceParser:
                     else:
                         self._register(self.goto, (idx, symbol), idj)
 
-    def __call__(self, tokens, get_ast=False):
-        stack = [0]
+    def __call__(self, tokens):
+        stack: List[Any] = [0]
         cursor = 0
-        output = []
 
         while True:
             state = stack[-1]
             lookahead = tokens[cursor]
-            if self.verbose:
-                print(stack, '<---||--->', tokens[cursor:])
 
             assert (state, lookahead.token_type) in self.action, f'Parsing Error in ' \
                 f'{(state, lookahead.lex, lookahead.token_type)} '
@@ -181,33 +176,30 @@ class ShiftReduceParser:
             action, tag = self.action[state, lookahead.token_type]
 
             if action == self.SHIFT:
-                stack += [lookahead.token_type, lookahead.lex, tag]
+                stack += [lookahead, lookahead.lex, tag]
                 cursor += 1
             elif action == self.REDUCE:
-                output.append(tag)
-
                 head, body = tag
 
                 try:
-                    attribute = tag.attributes[0]  # La gramatica es atributada
+                    attribute = tag.attributes[0]  # It's an attributed grammar
                 except AttributeError:
-                    attribute = None  # La gramatica es no atributada
+                    attribute = None  # it's not an attribute grammar
 
                 syn = [None] * (len(body) + 1)
                 for i, symbol in enumerate(reversed(body), 1):
-                    stack.pop()
-                    syn[-i] = stack.pop()
-                    assert symbol == stack.pop(), 'Bad Reduce...'
+                    state, node, token = stack.pop(), stack.pop(), stack.pop()
+                    syn[-i] = node
+                    assert symbol == token.token_type, 'Bad Reduce...'
                 syn[0] = attribute(syn) if attribute is not None else None
 
                 state = stack[-1]
                 goto = self.goto[state, head]
                 stack += [head, syn[0], goto]
-
             elif action == self.OK:
-                return (output, stack[2]) if get_ast else output
+                return stack[2]
             else:
-                raise Exception('Parsing error...')
+                raise Exception(f'Parsing error: invalid action {action}')
 
     def _register(self, table, key, value):
         # assert key not in table or table[key] == value, 'Shift-Reduce or Reduce-Reduce conflict!!!'

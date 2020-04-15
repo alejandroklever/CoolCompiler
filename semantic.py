@@ -1,5 +1,5 @@
 import cmp.visitor as visitor
-from ast import ProgramNode
+from astnodes import ProgramNode
 
 
 class SemanticChecker:
