@@ -1,5 +1,8 @@
+from typing import List
+
 import fire
 
+from cmp.utils import Token
 from definitions import cool_grammar
 from lexer import CoolLexer
 from parser import CoolParser
@@ -11,7 +14,10 @@ parser = CoolParser(G)
 
 class Tester:
     @staticmethod
-    def tokenize(script, print_tokens=True):
+    def tokenize(script: str, print_tokens: bool = True) -> List[Token]:
+        """
+        Method for tokenize a cool program
+        """
         file = f'scripts/{script}'
         program = ''.join(open(file, 'r').read())
 
@@ -25,6 +31,11 @@ class Tester:
 
     @staticmethod
     def parse(script):
+        """
+        Method for parse a cool program and return an ast
+        :param script:
+        :return:
+        """
         tokens = Tester.tokenize(script, print_tokens=False)
         _, ast = parser(tokens, get_ast=True)
         print(ast)

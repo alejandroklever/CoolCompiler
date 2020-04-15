@@ -45,7 +45,10 @@ class NonTerminal(Symbol):
 
     def __imod__(self, other):
         if isinstance(other, str):
-            p = Production(self, Sentence(*(self.Grammar[s] for s in other.split())))
+            if other:
+                p = Production(self, Sentence(*(self.Grammar[s] for s in other.split())))
+            else:
+                p = Production(self, self.Grammar.Epsilon)
             self.Grammar.AddProduction(p)
             return self
 
@@ -63,7 +66,10 @@ class NonTerminal(Symbol):
             assert len(other) > 1
 
             if isinstance(other[0], str):
-                other = (Sentence(*(self.Grammar[s] for s in other[0].split())),) + other[1:]
+                if other[0]:
+                    other = (Sentence(*(self.Grammar[s] for s in other[0].split())),) + other[1:]
+                else:
+                    other = (self.Grammar.Epsilon,) + other[1:]
 
             if len(other) == 2:
                 other += (None,) * len(other[0])

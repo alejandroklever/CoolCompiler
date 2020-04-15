@@ -1,5 +1,7 @@
 import inspect
 
+from cmp.pycompiler import Epsilon
+
 TEMPLATE = """from abc import ABC
 from cmp.parsing import ShiftReduceParser
 from cmp.pycompiler import AttributeProduction, Sentence
@@ -62,8 +64,11 @@ class LRParserSerializer:
                 s1 += f'("{act}", {tag}),\n'
             elif act == 'REDUCE':
                 head, body = tag
-                body = ', '.join(f'G["{s}"]' for s in body)
-                s1 += f'("{act}", AttributeProduction(G["{head}"], Sentence({body}), [{lambdas[repr(tag)]}])),\n'
+                if isinstance(body, Epsilon):
+                    s1 += f'("{act}", AttributeProduction(G["{head}"], G.Epsilon, [{lambdas[repr(tag)]}])),\n'
+                else:
+                    body = ', '.join(f'G["{s}"]' for s in body)
+                    s1 += f'("{act}", AttributeProduction(G["{head}"], Sentence({body}), [{lambdas[repr(tag)]}])),\n'
             else:
                 s1 += f'("{act}", None),\n'
 

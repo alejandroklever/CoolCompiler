@@ -3,8 +3,8 @@ class Node:
 
 
 class ProgramNode(Node):
-    def __init__(self, class_list):
-        self.class_list = class_list
+    def __init__(self, declarations):
+        self.declarations = declarations
 
 
 class DeclarationNode(Node):
@@ -31,10 +31,10 @@ class MethodDeclarationNode(DeclarationNode):
 
 
 class AttrDeclarationNode(DeclarationNode):
-    def __init__(self, idx, typex, expresion=None):
+    def __init__(self, idx, typex, expr=None):
         self.id = idx
         self.type = typex
-        self.expresion = expresion
+        self.expr = expr
 
 
 class ParamNode(DeclarationNode):
@@ -44,8 +44,8 @@ class ParamNode(DeclarationNode):
 
 
 class BlockNode(ExpressionNode):
-    def __init__(self, exprs):
-        self.expressions = exprs
+    def __init__(self, expressions):
+        self.expressions = expressions
 
 
 class LetNode(ExpressionNode):

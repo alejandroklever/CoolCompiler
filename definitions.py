@@ -107,13 +107,10 @@ program %= 'class-set', lambda s: ProgramNode(s[1])
 class_set %= 'class-def', lambda s: [s[1]]
 class_set %= 'class-def class-set', lambda s: [s[1]] + s[2]
 
-class_def %= 'class type { }', lambda s: ClassDeclarationNode(s[2], [])
-class_def %= 'class type inherits { }', lambda s: ClassDeclarationNode(s[2], [], s[4])
 class_def %= 'class type { feature-list }', lambda s: ClassDeclarationNode(s[2], s[4])
 class_def %= 'class type inherits type { feature-list }', lambda s: ClassDeclarationNode(s[2], s[6], s[4])
 
-feature_list %= 'attribute ;', lambda s: [s[1]]
-feature_list %= 'method ;', lambda s: [s[1]]
+feature_list %= '', lambda s: []
 feature_list %= 'attribute ; feature-list', lambda s: [s[1]] + s[3]
 feature_list %= 'method ; feature-list', lambda s: [s[1]] + s[3]
 
@@ -149,7 +146,7 @@ term %= 'term / factor', lambda s: DivNode(s[1], s[3])
 term %= 'factor', lambda s: s[1]
 
 factor %= 'isvoid factor', lambda s: IsVoidNode(s[2])
-factor %= '~ factor', lambda s: IsVoidNode(s[2])
+factor %= '~ factor', lambda s: ComplementNode(s[2])
 factor %= 'atom', lambda s: s[1]
 
 atom %= 'id', lambda s: VariableNode(s[1])
@@ -244,4 +241,5 @@ if __name__ == '__main__':
     parser = cool_parser()
     print('Building Time        :', time.time() - t, 'sec')
     print('Action Table Entries :', len(parser.action))
+    print('Got Table Entries    :', len(parser.goto))
     print('Presents Conflicts   :', parser.conflict is not None)
