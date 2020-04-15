@@ -1,5 +1,4 @@
 from enum import auto, Enum
-from typing import Any, List
 
 from .automatas import build_lr0_automaton, build_lr1_automaton, build_larl1_automaton
 from .utils import compute_firsts, compute_follows
@@ -163,7 +162,7 @@ class ShiftReduceParser:
                         self._register(self.goto, (idx, symbol), idj)
 
     def __call__(self, tokens):
-        stack: List[Any] = [0]
+        stack: list = [0]
         cursor = 0
 
         while True:
