@@ -1,26 +1,5 @@
-from enum import auto, Enum
-
 from .automatas import build_lr1_automaton, build_larl1_automaton
 from .utils import compute_firsts, compute_follows
-
-
-class LRConflictType(Enum):
-    """
-    Enum for mark the type of lr-family conflict parser
-    """
-    ReduceReduce = auto()
-    ShiftReduce = auto()
-
-
-class LRConflict:
-    def __init__(self, state, symbol, ctype):
-        self.state = state
-        self.symbol = symbol
-        self.cType = ctype
-
-    def __iter__(self):
-        yield self.state
-        yield self.symbol
 
 
 class ShiftReduceParser:
