@@ -17,6 +17,8 @@ class Tester:
     def tokenize(script: str, print_tokens: bool = True) -> List[Token]:
         """
         Method for tokenize a cool program
+        :param script: string with the name of the program
+        :param print_tokens: if true tokens will be printing with the program format
         """
         file = f'scripts/{script}'
         program = ''.join(open(file, 'r').read())
@@ -30,11 +32,10 @@ class Tester:
         return tokens
 
     @staticmethod
-    def parse(script):
+    def parse(script: str):
         """
         Method for parse a cool program and return an ast
-        :param script:
-        :return:
+        :param script: string with the name of the program
         """
         tokens = Tester.tokenize(script, print_tokens=False)
         ast = parser(tokens)

@@ -1,5 +1,6 @@
-import itertools as itt
+import itertools
 from collections import OrderedDict
+from typing import List
 
 
 class SemanticError(Exception):
@@ -40,8 +41,8 @@ class Method:
 class Type:
     def __init__(self, name: str):
         self.name = name
-        self.attributes = []
-        self.methods = []
+        self.attributes: List[Attribute] = []
+        self.methods: List[Method] = []
         self.parent = None
 
     def set_parent(self, parent):
@@ -210,7 +211,7 @@ class Scope:
         return info
 
     def find_variable(self, vname, index=None):
-        _locals = self.locals if index is None else itt.islice(self.locals, index)
+        _locals = self.locals if index is None else itertools.islice(self.locals, index)
         try:
             return next(x for x in _locals if x.name == vname)
         except StopIteration:

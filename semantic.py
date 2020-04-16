@@ -1,5 +1,6 @@
 import cmp.visitor as visitor
 from astnodes import ProgramNode
+from cmp.semantic import Scope
 
 
 class SemanticChecker:
@@ -11,5 +12,5 @@ class SemanticChecker:
         pass
 
     @visitor.when(ProgramNode)
-    def visit(self, node: ProgramNode, scope=None):
+    def visit(self, node: ProgramNode, scope: Scope = None):
         pass

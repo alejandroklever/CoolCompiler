@@ -1,65 +1,8 @@
-from cmp.automata import State, multiline_formatter
+from cmp.automata import State
 from cmp.pycompiler import Item
 from cmp.utils import ContainerSet
 
 from .utils import compute_firsts, compute_local_first
-
-
-################
-# SLR AUTOMATA #
-################
-def closure_lr0(items):
-    closure = ContainerSet(*items)
-
-    pending = list(items)
-    while pending:
-        current = pending.pop()
-        symbol = current.NextSymbol
-
-        if current.IsReduceItem or symbol.IsTerminal:
-            continue
-
-        new_items = [Item(p, 0) for p in symbol.productions if Item(p, 0) not in closure]
-        pending += new_items
-        closure.extend(new_items)
-    return frozenset(closure)
-
-
-def goto_lr0(items, symbol):
-    return frozenset(item.NextItem() for item in items if item.NextSymbol == symbol)
-
-
-def build_lr0_automaton(G):
-    assert len(G.startSymbol.productions) == 1, 'Grammar must be augmented'
-
-    start_production = G.startSymbol.productions[0]
-    start_item = Item(start_production, 0)
-    start = frozenset([start_item])
-
-    automaton = State(closure_lr0(start), True)
-
-    pending = [start]
-    visited = {start: automaton}
-
-    while pending:
-        current = pending.pop()
-        current_state = visited[current]
-        current_closure = current_state.state
-        for symbol in G.terminals + G.nonTerminals:
-            kernel = goto_lr0(current_closure, symbol)
-
-            if kernel == frozenset():
-                continue
-
-            try:
-                next_state = visited[kernel]
-            except KeyError:
-                next_state = visited[kernel] = State(closure_lr0(kernel), True)
-                pending.append(kernel)
-
-            current_state.add_transition(symbol.Name, next_state)
-    automaton.set_formatter(multiline_formatter)
-    return automaton
 
 
 ########################
@@ -148,7 +91,6 @@ def build_lr1_automaton(G, firsts=None):
                 pending.append(kernel)
             current_state.add_transition(symbol.Name, next_state)
 
-    automaton.set_formatter(multiline_formatter)
     return automaton
 
 
@@ -205,5 +147,4 @@ def build_larl1_automaton(G, firsts=None):
             else:
                 assert current_state.get(symbol.Name) is next_state, 'Bad build!!!'
 
-    automaton.set_formatter(multiline_formatter)
     return automaton

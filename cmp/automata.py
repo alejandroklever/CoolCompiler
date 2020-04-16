@@ -1,37 +1,13 @@
-from typing import Any, Dict, Set, Callable, List
-
-try:
-    import pydot
-except ModuleNotFoundError:
-    pass
+from typing import Any, Dict, Set, List, Tuple, Union
 
 
 class State:
-    def __init__(self, state: Any, final: bool = False, formatter: Callable[['State'], str] = lambda x: str(x),
-                 shape: str = 'circle'):
+    def __init__(self, state: Any, final: bool = False):
         self.state: Any = state
         self.final: bool = final
         self.transitions: Dict[str, List['State']] = {}
         self.epsilon_transitions: Set['State'] = set()
         self.tag = None
-        self.formatter = formatter
-        self.shape: str = shape
-
-    # The method name is set this way from compatibility issues.
-    def set_formatter(self, value, attr='formatter', visited=None):
-        if visited is None:
-            visited = set()
-        elif self in visited:
-            return
-
-        visited.add(self)
-        self.__setattr__(attr, value)
-        for destinations in self.transitions.values():
-            for node in destinations:
-                node.set_formatter(value, attr, visited)
-        for node in self.epsilon_transitions:
-            node.set_formatter(value, attr, visited)
-        return self
 
     def has_transition(self, symbol):
         return symbol in self.transitions
@@ -55,9 +31,9 @@ class State:
 
         return any(s.final for s in states)
 
-    def to_deterministic(self, formatter=lambda x: str(x)) -> 'State':
+    def to_deterministic(self) -> 'State':
         closure = self.epsilon_closure
-        start = State(tuple(closure), any(s.final for s in closure), formatter)
+        start = State(tuple(closure), any(s.final for s in closure))
 
         closures = [closure]
         states = [start]
@@ -72,7 +48,7 @@ class State:
                 closure = self.epsilon_closure_by_state(*move)
 
                 if closure not in closures:
-                    new_state = State(tuple(closure), any(s.final for s in closure), formatter)
+                    new_state = State(tuple(closure), any(s.final for s in closure))
                     closures.append(closure)
                     states.append(new_state)
                     pending.append(new_state)
@@ -85,7 +61,7 @@ class State:
         return start
 
     @staticmethod
-    def from_nfa(nfa, get_states: bool = False) -> 'State':
+    def from_nfa(nfa, get_states: bool = False) -> Union['State', Tuple['State', List['State']]]:
         states = []
         for n in range(nfa.states):
             state = State(n, n in nfa.finals)
@@ -119,10 +95,6 @@ class State:
     @property
     def epsilon_closure(self):
         return self.epsilon_closure_by_state(self)
-
-    @property
-    def name(self):
-        return self.formatter(self.state)
 
     def get(self, symbol):
         target = self.transitions[symbol]
@@ -169,47 +141,3 @@ class State:
                 yield from node.__visit(visited)
         for node in self.epsilon_transitions:
             yield from node.__visit(visited)
-
-    def graph(self):
-        G = pydot.Dot(rankdir='LR', margin=0.1)
-        G.add_node(pydot.Node('start', shape='plaintext', label='', width=0, height=0))
-
-        visited = set()
-
-        def visit(start):
-            ids = id(start)
-            if ids not in visited:
-                visited.add(ids)
-                G.add_node(pydot.Node(ids, label=start.name, shape=self.shape, style='bold' if start.final else ''))
-                for tran, destinations in start.transitions.items():
-                    for end in destinations:
-                        visit(end)
-                        G.add_edge(pydot.Edge(ids, id(end), label=tran, labeldistance=2))
-                for end in start.epsilon_transitions:
-                    visit(end)
-                    G.add_edge(pydot.Edge(ids, id(end), label='ε', labeldistance=2))
-
-        visit(self)
-        G.add_edge(pydot.Edge('start', id(self), label='', style='dashed'))
-
-        return G
-
-    def _repr_svg_(self):
-        try:
-            return self.graph().create_svg().decode('utf8')
-        except AttributeError:
-            pass
-
-    def write_to(self, name):
-        return self.graph().write_svg(name)
-
-
-def multiline_formatter(state):
-    return '\n'.join(str(item) for item in state)
-
-
-def lr0_formatter(state):
-    try:
-        return '\n'.join(str(item)[:-2] for item in state)
-    except TypeError:
-        return str(state)[:-2]

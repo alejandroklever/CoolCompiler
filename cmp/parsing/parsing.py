@@ -1,12 +1,12 @@
 from enum import auto, Enum
 
-from .automatas import build_lr0_automaton, build_lr1_automaton, build_larl1_automaton
+from .automatas import build_lr1_automaton, build_larl1_automaton
 from .utils import compute_firsts, compute_follows
 
 
 class LRConflictType(Enum):
     """
-    Enum for mark the type of lr-family parser
+    Enum for mark the type of lr-family conflict parser
     """
     ReduceReduce = auto()
     ShiftReduce = auto()
@@ -21,98 +21,6 @@ class LRConflict:
     def __iter__(self):
         yield self.state
         yield self.symbol
-
-
-class LLConflictType(Enum):
-    """
-    Enum for mark the type of ll parser
-    """
-    FirstFirst = auto()
-    FollowFollow = auto()
-
-
-class LLConflict:
-    def __init__(self, nonterminal, terminal, ctype):
-        self.nonterminal = nonterminal
-        self.terminal = terminal
-        self.cType = ctype
-
-    def __iter__(self):
-        yield self.nonterminal
-        yield self.terminal
-
-
-class LL1Parser:
-    def __init__(self, G):
-        self.G = G
-        self.firsts = compute_firsts(G)
-        self.follows = compute_follows(G, self.firsts)
-        self.conflict = None
-        self.table = self._build_parsing_table()
-
-    def _build_parsing_table(self):
-        G = self.G
-        firsts = self.firsts
-        follows = self.follows
-        parsing_table = {}
-
-        # P: X -> alpha
-        for production in G.Productions:
-            head, body = production
-
-            contains_epsilon = firsts[body].contains_epsilon
-
-            # working with symbols on First(alpha) ...
-            if not contains_epsilon:
-                for symbol in firsts[body]:
-                    try:
-                        parsing_table[head, symbol].append(production)
-                        self.conflict = LLConflict(head, symbol, LLConflictType.FirstFirst)
-                    except KeyError:
-                        parsing_table[head, symbol] = [production]
-            # working with epsilon...
-            else:
-                for symbol in follows[head]:
-                    try:
-                        parsing_table[head, symbol].append(production)
-                        self.conflict = LLConflict(head, symbol, LLConflictType.FollowFollow)
-                    except KeyError:
-                        parsing_table[head, symbol] = [production]
-
-        # parsing table is ready!!!
-        return parsing_table
-
-    def __call__(self, tokens):
-        G = self.G
-        table = self.table
-
-        stack = [G.startSymbol]
-        cursor = 0
-        output = []
-
-        # parsing w...
-        while len(stack) > 0 and cursor < len(tokens):
-            top = stack.pop()
-            currentToken = tokens[cursor].token_type
-            # print((top, currentToken))
-            if top.IsTerminal:
-                cursor += 1
-                if currentToken != top:
-                    return None
-            elif top.IsNonTerminal:
-                try:
-                    production = table[top, currentToken][0]
-                except KeyError:
-                    return None
-
-                output.append(production)
-                reversed_production = reversed(production.Right)
-
-                for s in reversed_production:
-                    stack.append(s)
-
-        # left parse is ready!!!
-        return output
 
 
 class ShiftReduceParser:
@@ -229,14 +137,6 @@ class ShiftReduceParser:
 
     def _lookaheads(self, item):
         raise NotImplementedError()
-
-
-class SLR1Parser(ShiftReduceParser):
-    def _build_automaton(self):
-        return build_lr0_automaton(self.augmented_G)
-
-    def _lookaheads(self, item):
-        return self.follows[item.production.Left]
 
 
 class LR1Parser(ShiftReduceParser):
