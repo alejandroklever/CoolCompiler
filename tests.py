@@ -14,22 +14,15 @@ parser = CoolParser(G)
 
 class Tester:
     @staticmethod
-    def tokenize(script: str, print_tokens: bool = True) -> List[Token]:
+    def tokenize(script: str) -> List[Token]:
         """
         Method for tokenize a cool program
         :param script: string with the name of the program
-        :param print_tokens: if true tokens will be printing with the program format
         """
         file = f'scripts/{script}'
-        program = ''.join(open(file, 'r').read())
+        program = open(file, 'r').read()
 
-        tokens = [t for t in lexer(program) if t.token_type not in (G['space'], G['newline'], G['tab'])]
-
-        if print_tokens:
-            for t in tokens:
-                print(t)
-
-        return tokens
+        return [t for t in lexer(program)]
 
     @staticmethod
     def parse(script: str):
@@ -37,7 +30,7 @@ class Tester:
         Method for parse a cool program and return an ast
         :param script: string with the name of the program
         """
-        tokens = Tester.tokenize(script, print_tokens=False)
+        tokens = Tester.tokenize(script)
         ast = parser(tokens)
         print(ast)
 

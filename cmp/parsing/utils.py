@@ -30,14 +30,14 @@ def compute_firsts(G):
     for terminal in G.terminals:
         firsts[terminal] = ContainerSet(terminal)
 
-    for nonterminal in G.nonTerminals:
+    for nonterminal in G.non_terminals:
         firsts[nonterminal] = ContainerSet()
 
     while change:
         change = False
 
         # P: X -> alpha
-        for production in G.Productions:
+        for production in G.productions:
             X, alpha = production
 
             first_X = firsts[X]
@@ -62,15 +62,15 @@ def compute_follows(G, firsts):
     local_firsts = {}
 
     # init Follow(Vn)
-    for nonterminal in G.nonTerminals:
+    for nonterminal in G.non_terminals:
         follows[nonterminal] = ContainerSet()
-    follows[G.startSymbol] = ContainerSet(G.EOF)
+    follows[G.start_symbol] = ContainerSet(G.EOF)
 
     while change:
         change = False
 
         # P: X -> alpha
-        for production in G.Productions:
+        for production in G.productions:
             X = production.Left
             alpha = production.Right
 

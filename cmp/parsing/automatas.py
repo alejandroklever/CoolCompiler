@@ -95,13 +95,13 @@ def build_lr1_automaton(G, firsts=None):
 
 
 def build_larl1_automaton(G, firsts=None):
-    assert len(G.startSymbol.productions) == 1, 'Grammar must be augmented'
+    assert len(G.start_symbol.productions) == 1, 'Grammar must be augmented'
 
     if not firsts:
         firsts = compute_firsts(G)
     firsts[G.EOF] = ContainerSet(G.EOF)
 
-    start_production = G.startSymbol.productions[0]
+    start_production = G.start_symbol.productions[0]
     start_item = Item(start_production, 0, lookaheads=ContainerSet(G.EOF))
     start = frozenset([start_item.Center()])
 
@@ -116,7 +116,7 @@ def build_larl1_automaton(G, firsts=None):
         current_state = visited[current]
 
         current_closure = current_state.state
-        for symbol in G.terminals + G.nonTerminals:
+        for symbol in G.terminals + G.non_terminals:
             goto = goto_lr1(current_closure, symbol, just_kernel=True)
             closure = closure_lr1(goto, firsts)
             center = frozenset(item.Center() for item in goto)
@@ -142,9 +142,9 @@ def build_larl1_automaton(G, firsts=None):
                 visited[center] = next_state = State(frozenset(closure), True)
                 pending.append(center)
 
-            if current_state[symbol.Name] is None:
-                current_state.add_transition(symbol.Name, next_state)
+            if current_state[symbol.name] is None:
+                current_state.add_transition(symbol.name, next_state)
             else:
-                assert current_state.get(symbol.Name) is next_state, 'Bad build!!!'
+                assert current_state.get(symbol.name) is next_state, 'Bad build!!!'
 
     return automaton

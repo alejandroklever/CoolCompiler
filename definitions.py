@@ -92,12 +92,6 @@ G.add_terminal('=')
 G.add_terminal('~')
 G.add_terminal('not')
 
-############
-# Specials #
-############
-G.add_terminal('tab')
-G.add_terminal('space')
-G.add_terminal('newline')
 
 ###############
 # Productions #
@@ -188,7 +182,7 @@ def cool_parser():
 if __name__ == '__main__':
     t = time.time()
     parser = cool_parser()
-    print('Building Time        :', time.time() - t, 'sec')
+    print('Building Time        :', time.time() - t, 'seconds')
     print('Action Table Entries :', len(parser.action))
     print('Got Table Entries    :', len(parser.goto))
     print('Presents Conflicts   :', parser.conflict is not None)

@@ -70,17 +70,17 @@ class Token:
         Token's type.
     """
 
-    def __init__(self, lex, token_type, row=0, col=0):
+    def __init__(self, lex, token_type, line=0, column=0):
         """
         :param lex: str
         :param token_type: Enum
-        :param row: int
-        :param col: int
+        :param line: int
+        :param column: int
         """
         self.lex = lex
         self.token_type = token_type
-        self.row = row
-        self.col = col
+        self.line = line
+        self.column = column
 
     def __str__(self):
         return f'{self.token_type}: {self.lex}'

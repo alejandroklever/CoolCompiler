@@ -5,10 +5,13 @@ ProductionList = List[Union['Production', 'AttributeProduction']]
 
 
 class Symbol:
-
     def __init__(self, name: str, grammar: 'Grammar'):
         self.name: str = name
         self.grammar: 'Grammar' = grammar
+
+    @property
+    def IsEpsilon(self):
+        return False
 
     def __str__(self):
         return self.name
@@ -23,32 +26,26 @@ class Symbol:
         raise TypeError(other)
 
     def __or__(self, other):
-
         if isinstance(other, Sentence):
             return SentenceList(Sentence(self), other)
-
         raise TypeError(other)
-
-    @property
-    def IsEpsilon(self):
-        return False
 
     def __len__(self):
         return 1
 
 
 class NonTerminal(Symbol):
-
     def __init__(self, name, grammar):
         super().__init__(name, grammar)
         self.productions: ProductionList = []
+        self.error_productions: ProductionList = []
 
-    def __imod__(self, other):
+    def __mod__(self, other):
         if isinstance(other, str):
             if other:
                 p = Production(self, Sentence(*(self.grammar[s] for s in other.split())))
             else:
-                p = Production(self, self.grammar.Epsilon)
+                p = Production(self, self.grammar.EPSILON)
             self.grammar.add_production(p)
             return self
 
@@ -69,7 +66,7 @@ class NonTerminal(Symbol):
                 if other[0]:
                     other = (Sentence(*(self.grammar[s] for s in other[0].split())),) + other[1:]
                 else:
-                    other = (self.grammar.Epsilon,) + other[1:]
+                    other = (self.grammar.EPSILON,) + other[1:]
 
             if len(other) == 2:
                 other += (None,) * len(other[0])
@@ -86,11 +83,9 @@ class NonTerminal(Symbol):
             return self
 
         if isinstance(other, SentenceList):
-
             for s in other:
                 p = Production(self, s)
                 self.grammar.add_production(p)
-
             return self
 
         raise TypeError(other)
@@ -109,7 +104,6 @@ class NonTerminal(Symbol):
 
 
 class Terminal(Symbol):
-
     def __init__(self, name: str, grammar: 'Grammar'):
         super().__init__(name, grammar)
 
@@ -124,6 +118,14 @@ class Terminal(Symbol):
     @property
     def IsEpsilon(self):
         return False
+
+
+class Error(Terminal):
+    def __init__(self, G):
+        super().__init__('error', G)
+
+    def __eq__(self, other):
+        return isinstance(other, Terminal)
 
 
 class EOF(Terminal):
@@ -181,7 +183,6 @@ class Sentence:
 
 
 class SentenceList:
-
     def __init__(self, *args):
         self._sentences = list(args)
 
@@ -204,7 +205,6 @@ class SentenceList:
 
 
 class Epsilon(Terminal, Sentence):
-
     def __init__(self, grammar: 'Grammar'):
         super().__init__('epsilon', grammar)
 
@@ -235,10 +235,13 @@ class Epsilon(Terminal, Sentence):
 
 
 class Production:
-
     def __init__(self, nonTerminal, sentence):
         self.Left: NonTerminal = nonTerminal
         self.Right: Sentence = sentence
+
+    @property
+    def IsEpsilon(self):
+        return self.Right.IsEpsilon
 
     def __str__(self):
         return '%s := %s' % (self.Left, self.Right)
@@ -256,13 +259,8 @@ class Production:
     def __hash__(self):
         return hash((self.Left, self.Right))
 
-    @property
-    def IsEpsilon(self):
-        return self.Right.IsEpsilon
-
 
 class AttributeProduction(Production):
-
     def __init__(self, nonTerminal, sentence, attributes):
         if not isinstance(sentence, Sentence) and isinstance(sentence, Symbol):
             sentence = Sentence(sentence)
@@ -293,12 +291,13 @@ class Grammar:
         self.productions: ProductionList = []
         self.non_terminals: List[NonTerminal] = []
         self.terminals: List[Terminal] = []
-        self.startSymbol: NonTerminal = None
-        self.pType: type = None  # production type
-        self.Epsilon: Epsilon = Epsilon(self)
+        self.start_symbol: NonTerminal = None
+        self.production_type: type = None
+        self.ERROR: Error = Error(self)
+        self.EPSILON: Epsilon = Epsilon(self)
         self.EOF: EOF = EOF(self)
 
-        self.symbDict = {'$': self.EOF}
+        self.symbDict = {'$': self.EOF, 'error': self.ERROR}
 
     def add_non_terminal(self, name: str, startSymbol: bool = False) -> NonTerminal:
         name = name.strip()
@@ -309,8 +308,8 @@ class Grammar:
 
         if startSymbol:
 
-            if self.startSymbol is None:
-                self.startSymbol = term
+            if self.start_symbol is None:
+                self.start_symbol = term
             else:
                 raise Exception("Cannot define more than one start symbol.")
 
@@ -323,12 +322,15 @@ class Grammar:
 
     def add_production(self, production: Production):
         if len(self.productions) == 0:
-            self.pType = type(production)
+            self.production_type = type(production)
 
-        assert type(production) == self.pType, "The Productions most be of only 1 type."
+        assert type(production) == self.production_type, "The Productions most be of only 1 type."
 
         production.Left.productions.append(production)
         self.productions.append(production)
+
+    def error(self, head, sentence, rule):
+        pass
 
     def add_terminal(self, name: str) -> Terminal:
         name = name.strip()
@@ -398,7 +400,7 @@ class Grammar:
         data = json.loads(data)
 
         G = Grammar()
-        dic = {'epsilon': G.Epsilon}
+        dic = {'epsilon': G.EPSILON}
 
         for term in data['Terminals']:
             dic[term] = G.add_terminal(term)
@@ -417,9 +419,9 @@ class Grammar:
         G.productions = self.productions.copy()
         G.non_terminals = self.non_terminals.copy()
         G.terminals = self.terminals.copy()
-        G.pType = self.pType
-        G.startSymbol = self.startSymbol
-        G.Epsilon = self.Epsilon
+        G.production_type = self.production_type
+        G.start_symbol = self.start_symbol
+        G.EPSILON = self.EPSILON
         G.EOF = self.EOF
         G.symbDict = self.symbDict.copy()
 
@@ -429,7 +431,7 @@ class Grammar:
     def IsAugmentedGrammar(self):
         augmented = 0
         for left, _ in self.productions:
-            if self.startSymbol == left:
+            if self.start_symbol == left:
                 augmented += 1
         if augmented <= 1:
             return True
@@ -441,13 +443,13 @@ class Grammar:
 
             G = self.copy()
             # S, self.startSymbol, SS = self.startSymbol, None, self.NonTerminal('S\'', True)
-            S = G.startSymbol
-            G.startSymbol = None
+            S = G.start_symbol
+            G.start_symbol = None
             SS = G.add_non_terminal('S\'', True)
-            if G.pType is AttributeProduction:
-                SS %= S + G.Epsilon, lambda x: x
+            if G.production_type is AttributeProduction:
+                SS %= S + G.EPSILON, lambda x: x
             else:
-                SS %= S + G.Epsilon
+                SS %= S + G.EPSILON
 
             return G
         else:

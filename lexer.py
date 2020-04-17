@@ -14,14 +14,24 @@ class CoolLexer(Lexer):
         :param G: cmp.pycompiler.Grammar
         """
         self.G = G
-        super().__init__(self.__table, G.EOF, self.__skip_characters)
+        super().__init__(self._table, G.EOF, self._skip_chars)
 
     @property
-    def __skip_characters(self):
-        return {' ', '\n', '\t'}
+    def _skip_chars(self):
+        def newline(lexer):
+            lexer.lineno += 1
+            lexer.column = 0
+
+        def whitespace(lexer):
+            lexer.column += 1
+
+        def tab(lexer):
+            lexer.column += 4
+
+        return {' ': whitespace, '\n': newline, '\t': tab}
 
     @property
-    def __table(self):
+    def _table(self):
         G = self.G
         return {
             'int': (G['integer'], '-?[1-9][0-9]*'),
