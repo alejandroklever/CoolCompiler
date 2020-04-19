@@ -1,6 +1,4 @@
 class Node:
-    row = 0
-    col = 0
     pass
 
 
@@ -13,7 +11,7 @@ class DeclarationNode(Node):
     pass
 
 
-class ExpressionNode(Node):
+class ExprNode(Node):
     pass
 
 
@@ -39,50 +37,57 @@ class AttrDeclarationNode(DeclarationNode):
         self.expr = expr
 
 
-class ParamNode(DeclarationNode):
-    def __init__(self, idx, typex):
-        self.id = idx
-        self.type = typex
-
-
-class BlockNode(ExpressionNode):
+class BlockNode(ExprNode):
     def __init__(self, expressions):
         self.expressions = expressions
 
 
-class LetNode(ExpressionNode):
+class LetNode(ExprNode):
     def __init__(self, declarations, expr):
         self.expr = expr
         self.declarations = declarations
 
 
-class CasesNode(ExpressionNode):
+class SwitchCaseNode(ExprNode):
     def __init__(self, expr, cases):
         self.expr = expr
         self.cases = cases
 
 
-class SingleCaseNode(ExpressionNode):
+class CaseNode(ExprNode):
     def __init__(self, idx, typex, expr):
-        self.idx = idx
-        self.typex = typex
+        self.id = idx
+        self.type = typex
         self.expr = expr
 
 
-class VarDeclarationNode(ExpressionNode):
+class VarDeclarationNode(ExprNode):
     def __init__(self, idx, typex, expr=None):
         self.id = idx
         self.type = typex
         self.expr = expr
 
 
-class AssignNode(ExpressionNode):
+class AssignNode(ExprNode):
     def __init__(self, idx, expr):
         self.id = idx
         self.expr = expr
 
 
-class MethodCallNode(ExpressionNode):
+class ConditionalNode(ExprNode):
+    def __init__(self, ifx, then, elsex):
+        self.if_expr = ifx
+        self.then_expr = then
+        self.else_expr = elsex
+
+
+class WhileNode(ExprNode):
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+
+
+class MethodCallNode(ExprNode):
     def __init__(self, idx, args, obj=None, typex=None):
         self.obj = obj
         self.id = idx
@@ -90,26 +95,20 @@ class MethodCallNode(ExpressionNode):
         self.type = typex
 
 
-class AtomicNode(ExpressionNode):
+class AtomicNode(ExprNode):
     def __init__(self, lex):
         self.lex = lex
 
 
-class BinaryNode(ExpressionNode):
+class UnaryNode(ExprNode):
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class BinaryNode(ExprNode):
     def __init__(self, left, right):
         self.left = left
         self.right = right
-
-
-class ConditionalNode(ExpressionNode):
-    def __init__(self, ifx, then, elsex):
-        self.ifx = ifx
-        self.then = then
-        self.elsex = elsex
-
-
-class ConstantNumNode(AtomicNode):
-    pass
 
 
 class VariableNode(AtomicNode):
@@ -132,19 +131,15 @@ class BooleanNode(AtomicNode):
     pass
 
 
-class NegationNode(AtomicNode):
+class NegationNode(UnaryNode):
     pass
 
 
-class ComplementNode(AtomicNode):
+class ComplementNode(UnaryNode):
     pass
 
 
-class IsVoidNode(AtomicNode):
-    pass
-
-
-class WhileNode(BinaryNode):
+class IsVoidNode(UnaryNode):
     pass
 
 

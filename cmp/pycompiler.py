@@ -1,7 +1,8 @@
 import json
-from typing import List, FrozenSet, Optional, Union, Tuple, Iterable
+from typing import List, FrozenSet, Optional, Union, Tuple, Iterable, Callable
 
 ProductionList = List[Union['Production', 'AttributeProduction']]
+Rule = Optional[Callable[[List[object]], object]]
 
 
 class Symbol:
@@ -68,14 +69,8 @@ class NonTerminal(Symbol):
                 else:
                     other = (self.grammar.EPSILON,) + other[1:]
 
-            if len(other) == 2:
-                other += (None,) * len(other[0])
-
-            assert len(other) == len(other[0]) + 2, 'Debe definirse una, y solo una, regla por cada símbolo de la ' \
-                                                    'producción '
-
             if isinstance(other[0], Symbol) or isinstance(other[0], Sentence):
-                p = AttributeProduction(self, other[0], other[1:])
+                p = AttributeProduction(self, other[0], other[1])
             else:
                 raise Exception("")
 
@@ -261,29 +256,12 @@ class Production:
 
 
 class AttributeProduction(Production):
-    def __init__(self, nonTerminal, sentence, attributes):
+    def __init__(self, nonTerminal, sentence, attribute):
         if not isinstance(sentence, Sentence) and isinstance(sentence, Symbol):
             sentence = Sentence(sentence)
-        super(AttributeProduction, self).__init__(nonTerminal, sentence)
+        super().__init__(nonTerminal, sentence)
 
-        self.attributes = attributes
-
-    def __str__(self):
-        return '%s := %s' % (self.Left, self.Right)
-
-    def __repr__(self):
-        return '%s -> %s' % (self.Left, self.Right)
-
-    def __iter__(self):
-        yield self.Left
-        yield self.Right
-
-    @property
-    def IsEpsilon(self):
-        return self.Right.IsEpsilon
-
-    def synthesize(self):
-        pass
+        self.attribute: Rule = attribute
 
 
 class Grammar:
@@ -297,7 +275,21 @@ class Grammar:
         self.EPSILON: Epsilon = Epsilon(self)
         self.EOF: EOF = EOF(self)
 
-        self.symbDict = {'$': self.EOF, 'error': self.ERROR}
+        self.symbol_dict = {'$': self.EOF, 'error': self.ERROR}
+        self.production_dict = {}
+
+    def add_terminal(self, name: str) -> Terminal:
+        name = name.strip()
+        if not name:
+            raise Exception("Empty name")
+
+        term = Terminal(name, self)
+        self.terminals.append(term)
+        self.symbol_dict[name] = term
+        return term
+
+    def add_terminals(self, names: str) -> Tuple[Terminal, ...]:
+        return tuple(self.add_terminal(x) for x in names.strip().split())
 
     def add_non_terminal(self, name: str, startSymbol: bool = False) -> NonTerminal:
         name = name.strip()
@@ -314,7 +306,7 @@ class Grammar:
                 raise Exception("Cannot define more than one start symbol.")
 
         self.non_terminals.append(term)
-        self.symbDict[name] = term
+        self.symbol_dict[name] = term
         return term
 
     def add_non_terminals(self, names: str) -> Tuple[NonTerminal, ...]:
@@ -328,22 +320,10 @@ class Grammar:
 
         production.Left.productions.append(production)
         self.productions.append(production)
+        self.production_dict[repr(production)] = production
 
     def error(self, head, sentence, rule):
         pass
-
-    def add_terminal(self, name: str) -> Terminal:
-        name = name.strip()
-        if not name:
-            raise Exception("Empty name")
-
-        term = Terminal(name, self)
-        self.terminals.append(term)
-        self.symbDict[name] = term
-        return term
-
-    def add_terminals(self, names: str) -> Tuple[Terminal, ...]:
-        return tuple(self.add_terminal(x) for x in names.strip().split())
 
     def __str__(self):
 
@@ -367,9 +347,12 @@ class Grammar:
 
         return ans
 
-    def __getitem__(self, name):
+    def __getitem__(self, item):
         try:
-            return self.symbDict[name]
+            try:
+                return self.symbol_dict[item]
+            except KeyError:
+                return self.production_dict[item]
         except KeyError:
             return None
 
@@ -423,7 +406,7 @@ class Grammar:
         G.start_symbol = self.start_symbol
         G.EPSILON = self.EPSILON
         G.EOF = self.EOF
-        G.symbDict = self.symbDict.copy()
+        G.symbol_dict = self.symbol_dict.copy()
 
         return G
 
@@ -454,7 +437,6 @@ class Grammar:
             return G
         else:
             return self.copy()
-    # endchange
 
 
 class Item:

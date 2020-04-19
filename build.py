@@ -1,4 +1,4 @@
-from definitions import cool_parser
+from grammar import cool_parser
 from cmp.parsing.serializer import LRParserSerializer
 
 PARSER_SETTINGS = {

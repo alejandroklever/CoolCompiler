@@ -73,7 +73,6 @@ class CoolLexer(Lexer):
             'isvoid': (G['isvoid'], 'isvoid'),
             'true': (G['true'], 'true'),
             'false': (G['false'], 'false'),
-            'end': (G['end'], 'end'),
             'type': (G['type'], '[A-Z][a-zA-Z0-9]*'),
             'id': (G['id'], '[a-z][a-zA-Z0-9]*'),
             'string': (G['string'], '".*"'),

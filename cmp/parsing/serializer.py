@@ -1,12 +1,8 @@
 import inspect
 
-from cmp.pycompiler import Epsilon
-
 TEMPLATE = """from abc import ABC
 from cmp.parsing import ShiftReduceParser
-from cmp.pycompiler import AttributeProduction, Sentence
-from astnodes import *
-
+from %s import G
 
 class %s(ShiftReduceParser, ABC):
     def __init__(self, G, verbose=False):
@@ -50,8 +46,8 @@ class LRParserSerializer:
         G = parser.G
 
         lambdas = {}
-        for p in G.Productions:
-            attr = p.attributes[0]
+        for p in G.productions:
+            attr = p.attribute
             code: str = 'lambda' + inspect.getsource(attr).replace('\n', '').split('lambda')[1]
             repr_p: str = repr(p)
             lambdas[repr_p] = code
@@ -63,12 +59,7 @@ class LRParserSerializer:
             if act == 'SHIFT':
                 s1 += f'("{act}", {tag}),\n'
             elif act == 'REDUCE':
-                head, body = tag
-                if isinstance(body, Epsilon):
-                    s1 += f'("{act}", AttributeProduction(G["{head}"], G.Epsilon, [{lambdas[repr(tag)]}])),\n'
-                else:
-                    body = ', '.join(f'G["{s}"]' for s in body)
-                    s1 += f'("{act}", AttributeProduction(G["{head}"], Sentence({body}), [{lambdas[repr(tag)]}])),\n'
+                s1 += f'("{act}", G["{repr(tag)}"]),\n'
             else:
                 s1 += f'("{act}", None),\n'
 

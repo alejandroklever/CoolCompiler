@@ -1,12 +1,10 @@
-import time
-
-from lexer import CoolLexer
+from grammar import cool_grammar
 from parser import CoolParser
-from definitions import cool_grammar
 
 if __name__ == '__main__':
-    t = time.time()
+    import time
     G = cool_grammar()
-    parser = CoolParser(G)
-    lexer = CoolLexer(G)
+
+    t = time.time()
+    CoolParser(G)
     print(time.time() - t)
