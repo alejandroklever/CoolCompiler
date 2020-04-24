@@ -38,7 +38,7 @@ G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
 # Basic Types #
 ###############
 G.add_terminal('string', regex=r'\"[^\"]*\"')
-G.add_terminal('integer', regex=r'-?\d+')
+G.add_terminal('int', regex=r'\d+')
 G.add_terminal('char', regex=r'\'[^\']*\'')
 
 ###########
@@ -139,7 +139,7 @@ factor %= 'atom', lambda s: s[1]
 atom %= 'id', lambda s: ast.VariableNode(s[1])
 atom %= 'true', lambda s: ast.BooleanNode(s[1])
 atom %= 'false', lambda s: ast.BooleanNode(s[1])
-atom %= 'integer', lambda s: ast.IntegerNode(s[1])
+atom %= 'int', lambda s: ast.IntegerNode(s[1])
 atom %= 'string', lambda s: ast.StringNode(s[1])
 atom %= 'function-call', lambda s: s[1]
 atom %= 'new type', lambda s: ast.InstantiateNode(s[2])
