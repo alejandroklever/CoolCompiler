@@ -1,7 +1,7 @@
-import astnodes as ast
-import time
+import inspect
 
-from cmp.parsing import LALR1Parser
+import astnodes as ast
+from cmp.parsing.parsing import LALR1Parser
 from cmp.pycompiler import Grammar
 
 G = Grammar()
@@ -9,7 +9,7 @@ G = Grammar()
 #################
 # Non-Terminals #
 #################
-program = G.add_non_terminal('program', startSymbol=True)
+program = G.add_non_terminal('program', start_symbol=True)
 class_list = G.add_non_terminal('class-list')
 class_def = G.add_non_terminal('class-def')
 feature_list = G.add_non_terminal('feature-list')
@@ -31,65 +31,59 @@ atom = G.add_non_terminal('atom')
 ###############
 # identifiers #
 ###############
-G.add_terminal('id')
-G.add_terminal('type')
+G.add_terminal('id', regex=r'[a-z][a-zA-Z0-9_]*')
+G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
 
 ###############
 # Basic Types #
 ###############
-G.add_terminal('string')
-G.add_terminal('integer')
-G.add_terminal('boolean')
+G.add_terminal('string', regex=r'\"[^\"]*\"')
+G.add_terminal('integer', regex=r'-?\d+')
+G.add_terminal('char', regex=r'\'[^\']*\'')
 
 ###########
 # Symbols #
 ###########
-G.add_terminal('{')
-G.add_terminal('}')
-G.add_terminal('(')
-G.add_terminal(')')
-G.add_terminal(',')
-G.add_terminal('.')
-G.add_terminal('@')
-G.add_terminal(':')
-G.add_terminal(';')
-G.add_terminal('<-')
-G.add_terminal('=>')
+G.add_terminals('{ } ( ) . , : ; @ <- =>')
 
 ############
 # Keywords #
 ############
-G.add_terminal('class')
-G.add_terminal('inherits')
-G.add_terminal('if')
-G.add_terminal('then')
-G.add_terminal('else')
-G.add_terminal('fi')
-G.add_terminal('while')
-G.add_terminal('loop')
-G.add_terminal('pool')
-G.add_terminal('let')
-G.add_terminal('in')
-G.add_terminal('case')
-G.add_terminal('esac')
-G.add_terminal('of')
-G.add_terminal('new')
-G.add_terminal('isvoid')
-G.add_terminal('true')
-G.add_terminal('false')
+G.add_terminals('class inherits if then else fi while loop pool let in case of esac new isvoid true false')
 
 #############
 # Operators #
 #############
-G.add_terminal('+')
-G.add_terminal('-')
-G.add_terminal('*')
-G.add_terminal('/')
-G.add_terminal('<')
-G.add_terminal('<=')
-G.add_terminal('=')
-G.add_terminal('~')
-G.add_terminal('not')
+G.add_terminals('+ - * / < <= = ~ not')
+
+
+##################
+# Ignored Tokens #
+##################
+@G.terminal('newline', r'\n+')
+def newline(lexer):
+    lexer.lineno += len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+    lexer.column = 0
+
+
+@G.terminal('whitespace', r' +')
+def whitespace(lexer):
+    lexer.column += len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+
+
+@G.terminal('tabulation', r'\t+')
+def tab(lexer):
+    lexer.column += 4 * len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+
+
+@G.lexical_error
+def lexical_error(lexer):
+    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"\n')
+    lexer.position += 1
+    lexer.column += 1
 
 
 ###############
@@ -169,15 +163,22 @@ function_call %= 'atom @ type . id ( expr-list )', lambda s: ast.MethodCallNode(
 expr_list %= 'expr', lambda s: [s[1]]
 expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
 
+#####################
+# Error Productions #
+#####################
+G.add_terminal_error()
 
-def cool_parser():
-    return LALR1Parser(G)
+
+@G.production("attribute -> id : type error")
+def attribute_error(s):
+    s.error(f"{s[3].line, s[3].column} - SyntacticError: Expected ';' instead of '{s[3].lex}'")
+    return ast.AttrDeclarationNode(s[1], s[3])
 
 
 if __name__ == '__main__':
+    import time
+
     t = time.time()
-    parser = cool_parser()
-    print('Building Time        :', time.time() - t, 'seconds')
-    print('Action Table Entries :', len(parser.action))
-    print('Got Table Entries    :', len(parser.goto))
-    print('Presents Conflicts   :', parser.conflicts is not None)
+    G.serialize_lexer('CoolLexer', inspect.getmodulename(__file__))
+    G.serialize_parser(LALR1Parser(G), 'CoolParser', inspect.getmodulename(__file__))
+    print(time.time() - t)

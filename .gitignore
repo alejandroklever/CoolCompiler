@@ -2,7 +2,6 @@
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
 *$py.class
 
 # C extensions
@@ -126,3 +125,7 @@ dmypy.json
 
 .idea
 .vscode
+tests
+scripts
+Sera borrado Untitled.ipynb
+Sera borrado output.txt

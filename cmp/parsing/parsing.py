@@ -1,10 +1,8 @@
-from enum import auto, Enum
-from typing import List
+import sys
 
 from cmp.automata import State
-from cmp.pycompiler import Item
+from cmp.pycompiler import Item, RuleList
 from cmp.utils import ContainerSet
-from cmp.parsing.lexing import Token
 
 
 ##############################
@@ -80,8 +78,8 @@ def compute_follows(G, firsts):
 
         # P: X -> alpha
         for production in G.productions:
-            X = production.Left
-            alpha = production.Right
+            X = production.left
+            alpha = production.right
 
             follow_X = follows[X]
 
@@ -102,9 +100,70 @@ def compute_follows(G, firsts):
     return follows
 
 
-########################
-# LR1 & LALR1 AUTOMATA #
-########################
+#########################
+# LR0 AUTOMATA BUILDING #
+#########################
+def closure_lr0(items):
+    closure = set(items)
+
+    pending = set(items)
+    while pending:
+        current = pending.pop()
+        symbol = current.NextSymbol
+
+        if current.IsReduceItem or symbol.IsTerminal:
+            continue
+
+        new_items = set(Item(p, 0) for p in symbol.productions)  # if Item(p, 0) not in closure]
+        pending |= new_items - closure
+        closure |= new_items
+    return frozenset(closure)
+
+
+def goto_lr0(items, symbol):
+    return frozenset(item.NextItem() for item in items if item.NextSymbol == symbol)
+
+
+def build_lr0_automaton(G, just_kernel=False):
+    assert len(G.start_symbol.productions) == 1, 'Grammar must be augmented'
+
+    start_production = G.start_symbol.productions[0]
+    start_item = Item(start_production, 0)
+    start = frozenset([start_item])
+
+    if not just_kernel:
+        automaton = State(closure_lr0(start), True)
+    else:
+        automaton = State(start, True)
+
+    pending = [start]
+    visited = {start: automaton}
+
+    symbols = G.terminals + G.non_terminals
+    while pending:
+        current = pending.pop()
+        current_state = visited[current]
+        current_closure = current_state.state if not just_kernel else closure_lr0(current)
+        for symbol in symbols:
+            kernel = goto_lr0(current_closure, symbol)
+
+            if kernel == frozenset():
+                continue
+
+            try:
+                next_state = visited[kernel]
+            except KeyError:
+                next_state = visited[kernel] = State(closure_lr0(kernel), True) if not just_kernel else State(kernel,
+                                                                                                              True)
+                pending.append(kernel)
+
+            current_state.add_transition(symbol.name, next_state)
+    return automaton
+
+
+#########################
+# LR1 AUTOMATA BUILDING #
+#########################
 def compress(items):
     centers = {}
 
@@ -136,13 +195,12 @@ def expand(item, firsts):
 
 
 def closure_lr1(items, firsts):
-    closure = ContainerSet(*items)
-    changed = True
-    while changed:
-        new_items = ContainerSet()
-        for item in closure:
-            new_items.extend(expand(item, firsts))
-        changed = closure.update(new_items)
+    closure = set(items)
+    pending = set(items)
+    while pending:
+        new_items = set(expand(pending.pop(), firsts))
+        pending |= new_items - closure
+        closure |= new_items
     return compress(closure)
 
 
@@ -153,13 +211,13 @@ def goto_lr1(items, symbol, firsts=None, just_kernel=False):
 
 
 def build_lr1_automaton(G, firsts=None):
-    assert len(G.startSymbol.productions) == 1, 'Grammar must be augmented'
+    assert len(G.start_symbol.productions) == 1, 'Grammar must be augmented'
 
     if not firsts:
         firsts = compute_firsts(G)
     firsts[G.EOF] = ContainerSet(G.EOF)
 
-    start_production = G.startSymbol.productions[0]
+    start_production = G.start_symbol.productions[0]
     start_item = Item(start_production, 0, lookaheads=(G.EOF,))
     start = frozenset([start_item])
 
@@ -187,88 +245,66 @@ def build_lr1_automaton(G, firsts=None):
                 goto = closure_lr1(kernel, firsts)
                 visited[kernel] = next_state = State(frozenset(goto), True)
                 pending.append(kernel)
-            current_state.add_transition(symbol.Name, next_state)
+            current_state.add_transition(symbol.name, next_state)
 
     return automaton
 
 
-def build_larl1_automaton(G, firsts=None):
-    assert len(G.start_symbol.productions) == 1, 'Grammar must be augmented'
+###########################
+# LALR1 AUTOMATA BUILDING #
+###########################
+def determining_lookaheads(state, propagate, table, firsts):
+    for item_kernel in state.state:
+        closure = closure_lr1([Item(item_kernel.production, item_kernel.pos, ('#',))], firsts)
+        for item in closure:
+            if item.IsReduceItem:
+                continue
+
+            next_state = state.get(item.NextSymbol.name)
+            next_item = item.NextItem().Center()
+            if '#' in item.lookaheads:
+                propagate[state, item_kernel].append((next_state, next_item))
+            table[next_state, next_item].extend(item.lookaheads - {'#'})
+
+
+def build_lalr1_automaton(G, firsts=None):
+    automaton = build_lr0_automaton(G, just_kernel=True)
 
     if not firsts:
         firsts = compute_firsts(G)
+    firsts['#'] = ContainerSet('#')
     firsts[G.EOF] = ContainerSet(G.EOF)
 
-    start_production = G.start_symbol.productions[0]
-    start_item = Item(start_production, 0, lookaheads=ContainerSet(G.EOF))
-    start = frozenset([start_item.Center()])
+    table = {(state, item): ContainerSet() for state in automaton for item in state.state}
+    propagate = {(state, item): [] for state in automaton for item in state.state}
 
-    closure = closure_lr1([start_item], firsts)
-    automaton = State(frozenset(closure), True)
+    for state in automaton:
+        determining_lookaheads(state, propagate, table, firsts)
+    del firsts['#']
 
-    pending = [start]
-    visited = {start: automaton}
+    start_item = list(automaton.state).pop()
+    table[automaton, start_item] = ContainerSet(G.EOF)
 
-    symbols = G.terminals + G.non_terminals
-    while pending:
-        current = pending.pop()
-        current_state = visited[current]
+    change = True
+    while change:
+        change = False
+        for from_state, from_item in propagate:
+            for to_state, to_item in propagate[from_state, from_item]:
+                change |= table[to_state, to_item].extend(table[from_state, from_item])
 
-        current_closure = current_state.state
-        for symbol in symbols:
-            goto = goto_lr1(current_closure, symbol, just_kernel=True)
-            closure = closure_lr1(goto, firsts)
-            center = frozenset(item.Center() for item in goto)
+    for state in automaton:
+        for item in state.state:
+            item.lookaheads = frozenset(table[state, item])
 
-            if center == frozenset():
-                continue
-
-            try:
-                next_state = visited[center]
-
-                centers = {item.Center(): item for item in next_state.state}
-                centers = {item.Center(): (centers[item.Center()], item) for item in closure}
-
-                updated_items = frozenset(
-                    Item(c.production, c.pos, item_a.lookaheads | item_b.lookaheads) for c, (item_a, item_b) in
-                    centers.items())
-                if next_state.state != updated_items:
-                    pending.append(center)
-                next_state.state = updated_items
-            except KeyError:
-                visited[center] = next_state = State(frozenset(closure), True)
-                pending.append(center)
-
-            if current_state[symbol.name] is None:
-                current_state.add_transition(symbol.name, next_state)
-            else:
-                assert current_state.get(symbol.name) is next_state, 'Bad build!!!'
+    for state in automaton:
+        state.state = frozenset(closure_lr1(state.state, firsts))
 
     return automaton
 
 
-#######################
-# LR1 & LALR1 Parsers #
-#######################
-class LRConflictType(Enum):
-    """
-    Enum for mark the type of lr-family conflict parser
-    """
-    ReduceReduce = auto()
-    ShiftReduce = auto()
-
-
-class LRConflict:
-    def __init__(self, state, symbol, ctype):
-        self.state = state
-        self.symbol = symbol
-        self.cType = ctype
-
-    def __iter__(self):
-        yield self.state
-        yield self.symbol
-
-
+#############################
+# SLR & LR1 & LALR1 Parsers #
+#############################
 class ShiftReduceParser:
     SHIFT = 'SHIFT'
     REDUCE = 'REDUCE'
@@ -276,52 +312,81 @@ class ShiftReduceParser:
 
     def __init__(self, G):
         self.G = G
-        self.augmented_G = G.AugmentedGrammar(True)
+        self.augmented_G = G.augmented_grammar(True)
         self.firsts = compute_firsts(self.augmented_G)
         self.follows = compute_follows(self.augmented_G, self.firsts)
         self.automaton = self._build_automaton()
-        self.state_dict = {}
-        self.conflicts = None
+        self.conflicts = []
+        self.errors = []
 
         self.action = {}
         self.goto = {}
+        self.sr = 0
+        self.rr = 0
         self._build_parsing_table()
 
-        if self.conflicts is None:
-            self._clean_tables()
+        if self.conflicts:
+            sys.stderr.write(f"Warning: {self.sr} Shift-Reduce Conflicts\n")
+            sys.stderr.write(f"Warning: {self.rr} Reduce-Reduce Conflicts\n")
 
     def _build_parsing_table(self):
         G = self.augmented_G
         automaton = self.automaton
 
         for i, node in enumerate(automaton):
-            node.idx = i
-            self.state_dict[i] = node
+            node.id = i
 
         for node in automaton:
-            idx = node.idx
             for item in node.state:
                 if item.IsReduceItem:
-                    if item.production.Left == G.start_symbol:
-                        self._register(self.action, (idx, G.EOF), (self.OK, None))
+                    if item.production.left == G.start_symbol:
+                        self._register(self.action, (node.id, G.EOF), (self.OK, None))
                     else:
                         for lookahead in self._lookaheads(item):
-                            self._register(self.action, (idx, lookahead), (self.REDUCE, item.production))
+                            self._register(self.action, (node.id, lookahead), (self.REDUCE, item.production))
                 else:
                     symbol = item.NextSymbol
-                    idj = node.get(symbol.name).idx
                     if symbol.IsTerminal:
-                        self._register(self.action, (idx, symbol), (self.SHIFT, idj))
+                        self._register(self.action, (node.id, symbol), (self.SHIFT, node.get(symbol.name).id))
                     else:
-                        self._register(self.goto, (idx, symbol), idj)
+                        self._register(self.goto, (node.id, symbol), node.get(symbol.name).id)
 
-    def __call__(self, tokens: List[Token]):
+    def _register(self, table, key, value):
+        if key in table and table[key] != value:
+            action, tag = table[key]
+            if action != value[0]:
+                if action == self.SHIFT:
+                    table[key] = value  # By default shifting if exists a Shift-Reduce Conflict
+                self.sr += 1
+                self.conflicts.append(('SR', value[1], tag))
+            else:
+                self.rr += 1
+                self.conflicts.append(('RR', value[1], tag))
+        else:
+            table[key] = value
+
+    def _build_automaton(self):
+        raise NotImplementedError()
+
+    def _lookaheads(self, item):
+        raise NotImplementedError()
+
+    def __call__(self, tokens):
+        """
+        Parse the given TokenList
+
+        :param tokens: List[Token]
+        :return: Any
+        """
         stack: list = [0]  # The order in stack is [init state] + [symbol, rule, state, ...]
         cursor = 0
 
         while True:
             state = stack[-1]
             lookahead = tokens[cursor]
+
+            if (state, lookahead.token_type) not in self.action:
+                pass
 
             assert (state, lookahead.token_type) in self.action, f'ParsingError: in ' \
                 f'{(state, lookahead.lex, lookahead.token_type)} '
@@ -334,15 +399,13 @@ class ShiftReduceParser:
             elif action == self.REDUCE:
                 head, body = tag
 
-                rules = [None] * (len(body) + 1)
+                rules = RuleList(self, [None] * (len(body) + 1))
                 for i, s in enumerate(reversed(body), 1):
                     state, rules[-i], symbol = stack.pop(), stack.pop(), stack.pop()
                     assert s == symbol, f'ReduceError: in production "{repr(tag)}". Expected {s} instead of {s}'
 
-                try:
-                    rules[0] = tag.attribute(rules)  # It's an attributed grammar
-                except AttributeError:
-                    pass
+                if tag.rule is not None:
+                    rules[0] = tag.rule(rules)
 
                 state = stack[-1]
                 goto = self.goto[state, head]
@@ -350,37 +413,15 @@ class ShiftReduceParser:
             elif action == self.OK:
                 return stack[2]
             else:
-                raise Exception(f'Parsing error: invalid action {action}')
+                raise Exception(f'ParsingError: invalid action {action}')
 
-    def _register(self, table, key, value):
-        # assert key not in table or table[key] == value, 'Shift-Reduce or Reduce-Reduce conflict!!!'
-        try:
-            n = len(table[key])
-            table[key].add(value)
-            if self.conflicts is None and n != len(table[key]):
-                if all(action == self.REDUCE for action, _ in list(table[key])[:2]):
-                    cType = LRConflictType.ReduceReduce
-                else:
-                    cType = LRConflictType.ShiftReduce
 
-                self.conflicts = LRConflict(key[0], key[1], cType)
-                self.conflicts.value1 = list(table[key])[0]
-                self.conflicts.value2 = list(table[key])[1]
-
-        except KeyError:
-            table[key] = {value}
-
-    def _clean_tables(self):
-        for key in self.action:
-            self.action[key] = self.action[key].pop()
-        for key in self.goto:
-            self.goto[key] = self.goto[key].pop()
-
+class SLRParser(ShiftReduceParser):
     def _build_automaton(self):
-        raise NotImplementedError()
+        return build_lr0_automaton(self.augmented_G)
 
     def _lookaheads(self, item):
-        raise NotImplementedError()
+        return self.follows[item.production.left]
 
 
 class LR1Parser(ShiftReduceParser):
@@ -393,4 +434,4 @@ class LR1Parser(ShiftReduceParser):
 
 class LALR1Parser(LR1Parser):
     def _build_automaton(self):
-        return build_larl1_automaton(self.augmented_G, firsts=self.firsts)
+        return build_lalr1_automaton(self.augmented_G, firsts=self.firsts)

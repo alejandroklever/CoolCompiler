@@ -1,79 +1,20 @@
-from cmp.parsing import Lexer
+import re
+
+from cmp.parsing.lexing import Token, Lexer
+from grammar import G
 
 
 class CoolLexer(Lexer):
-    """
-    Specialized lexer for COOL programing language.
-
-    This derived from cmp.parsing.lexer.Lexer
-    """
-    def __init__(self, G):
-        """
-        Receive a Grammar to take it terminals as token types
-
-        :param G: cmp.pycompiler.Grammar
-        """
-        self.G = G
-        super().__init__(self._table, G.EOF, self._skip_chars)
-
-    @property
-    def _skip_chars(self):
-        def newline(lexer):
-            lexer.lineno += 1
-            lexer.column = 0
-
-        def whitespace(lexer):
-            lexer.column += 1
-
-        def tab(lexer):
-            lexer.column += 4
-
-        return {' ': whitespace, '\n': newline, '\t': tab}
-
-    @property
-    def _table(self):
-        G = self.G
-        return {
-            'int': (G['integer'], '-?[1-9][0-9]*'),
-            'add': (G['+'], '\+'),
-            'sub': (G['-'], '-'),
-            'mul': (G['*'], '\*'),
-            'div': (G['/'], '/'),
-            'le': (G['<='], '<='),
-            'assign': (G['<-'], '<-'),
-            'lt': (G['<'], '<'),
-            'eq': (G['='], '='),
-            'comp': (G['~'], '~'),
-            'not': (G['not'], 'not'),
-            'ocur': (G['{'], '{'),
-            'ccur': (G['}'], '}'),
-            'opar': (G['('], '\('),
-            'cpar': (G[')'], '\)'),
-            'coma': (G[','], ','),
-            'dot': (G['.'], '\.'),
-            'arroba': (G['@'], '@'),
-            'colon': (G[':'], ':'),
-            'semicolon': (G[';'], ';'),
-            'arrow': (G['=>'], '=>'),
-            'class': (G['class'], 'class'),
-            'inherits': (G['inherits'], 'inherits'),
-            'if': (G['if'], 'if'),
-            'then': (G['then'], 'then'),
-            'else': (G['else'], 'else'),
-            'fi': (G['fi'], 'fi'),
-            'while': (G['while'], 'while'),
-            'loop': (G['loop'], 'loop'),
-            'pool': (G['pool'], 'pool'),
-            'let': (G['let'], 'let'),
-            'in': (G['in'], 'in'),
-            'case': (G['case'], 'case'),
-            'esac': (G['esac'], 'esac'),
-            'of': (G['of'], 'of'),
-            'new': (G['new'], 'new'),
-            'isvoid': (G['isvoid'], 'isvoid'),
-            'true': (G['true'], 'true'),
-            'false': (G['false'], 'false'),
-            'type': (G['type'], '[A-Z][a-zA-Z0-9]*'),
-            'id': (G['id'], '[a-z][a-zA-Z0-9]*'),
-            'string': (G['string'], '".*"'),
-        }
+    def __init__(self):
+        self.lineno = 0
+        self.column = 0
+        self.position = 0
+        self.token = Token('', '', 0, 0)
+        self.pattern = re.compile(r'(?P<newline>\n+)|(?P<whitespace> +)|(?P<tabulation>\t+)|(inherits)|(isvoid)|(class)|(while)|(false)|(then)|(else)|(loop)|(pool)|(case)|(esac)|(true)|(<\-)|(let)|(new)|(not)|(\{)|(\})|(\()|(\))|(\.)|(=>)|(if)|(fi)|(in)|(of)|(\+)|(\-)|(\*)|(<=)|(\~)|(,)|(:)|(;)|(@)|(/)|(<)|(=)|(?P<id>[a-z][a-zA-Z0-9_]*)|(?P<type>[A-Z][a-zA-Z0-9_]*)|(?P<string>\"[^\"]*\")|(?P<integer>-?\d+)|(?P<char>\'[^\']*\')')
+        self.token_rules = {key: rule for key, (_, _, rule) in G.terminal_rules.items() if rule is not None}
+        self.error_handler = G.lexical_error_handler if G.lexical_error_handler is not None else self.error 
+        self.contain_errors = False
+        self.eof = '$'
+    
+    def __call__(self, text):
+        return [Token(t.lex, G[t.token_type], t.line, t.column) for t in self.tokenize(text)] 

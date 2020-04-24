@@ -1,4 +1,6 @@
 import re
+import sys
+from typing import List, Any, Generator, Tuple, Pattern, Optional, Callable, Dict
 
 
 class Token:
@@ -20,10 +22,10 @@ class Token:
         :param line: int
         :param column: int
         """
-        self.lex = lex
-        self.token_type = token_type
-        self.line = line
-        self.column = column
+        self.lex: str = lex
+        self.token_type: Any = token_type
+        self.line: int = line
+        self.column: int = column
 
     def __str__(self):
         return f'{self.token_type}: {self.lex}'
@@ -36,54 +38,65 @@ class Token:
         return True
 
 
-class UnknownToken(Token):
-    """
-    Special class to detect lexical errors. Is derived from cmp.utils.Token
-    """
-
-    def __init__(self, lex):
-        super().__init__(self, lex, None)
-
-    def transform_to(self, token_type):
-        return Token(self.lex, token_type)
-
-    @property
-    def is_valid(self):
-        return False
-
-
 class Lexer:
-    def __init__(self, table, eof, special_symbols):
-        self.lineno = 0
-        self.column = 0
-        self.pos = 0
-        self.table = {**table, **{'$': (eof, '$')}}
-        self.pattern = self._build_regex(table)
-        self.eof = eof
-        self.special_symbols = special_symbols
+    def __init__(self, table: List[Tuple[str, str]], eof: str,
+                 token_rules: Optional[Dict[str, Callable[['Lexer'], Optional[Token]]]] = None,
+                 error_handler: Optional[Callable[['Lexer'], None]] = None):
+        if token_rules is None:
+            token_rules = {}
+
+        if error_handler is None:
+            error_handler = self.error
+
+        self.lineno: int = 0  # Current line number
+        self.column: int = 0  # Current column in the line
+        self.position: int = 0  # Current position in recognition
+        self.token: Token = Token('', '', 0, 0)  # Current token in recognition
+        self.pattern: Pattern = self._build_regex(table)
+        self.token_rules = token_rules  # type: Dict[str, Callable[['Lexer'], Optional[Token]]]
+        self.contain_errors: bool = False
+        self.error_handler = error_handler  # type: Callable[['Lexer'], None]
+        self.eof: str = eof
+
+    def tokenize(self, text: str) -> Generator[Token, None, None]:
+        while self.position < len(text):
+            match = self.pattern.match(text, pos=self.position)
+
+            if match is None:
+                self.contain_errors = True
+                self.token = Token(text[self.position], None, self.lineno, self.column)
+                self.error_handler(self)
+                continue
+
+            lexeme = match.group()
+            token_type = match.lastgroup if match.lastgroup is not None else match.group()
+            self.token = Token(lexeme, token_type, self.lineno, self.column)
+
+            if token_type in self.token_rules:
+                token = self.token_rules[token_type](self)
+                if token is None or not isinstance(token, Token):
+                    continue
+                yield token
+
+            yield self.token
+
+            self.position = match.end()
+            self.column += len(match.string)
+        yield Token('$', self.eof, self.lineno, self.column)
 
     @staticmethod
-    def _build_regex(table):
-        r = '|'.join([f'(?P<{alias}>{regex})' for alias, (_, regex) in table.items()])
-        return re.compile(r)
+    def print_error(error_msg):
+        sys.stderr(error_msg)
 
-    def _tokenize(self, text):
-        pos = self.pos
-        while pos < len(text):
-            if text[pos] in self.special_symbols:
-                self.special_symbols[text[pos]](self)
-                pos += 1
-            else:
-                match = self.pattern.match(text, pos=pos)
+    @staticmethod
+    def error(lexer: 'Lexer') -> None:
+        lexer.print_error(f'LexerError: Unexpected symbol "{lexer.token.lex}"\n')
+        lexer.position += 1
+        lexer.column += 1
 
-                if match is None:
-                    # TODO: Handle bad parsing error
-                    pass
+    @staticmethod
+    def _build_regex(table: List[Tuple[str, str]]) -> Pattern:
+        return re.compile('|'.join(['(?P<%s>%s)' % (name, regex) for name, regex in table]))
 
-                yield match.group(), match.lastgroup, self.lineno, self.column
-                pos = match.end()
-                self.column += len(match.group())
-        yield '$', '$', self.lineno, self.column
-
-    def __call__(self, text):
-        return [Token(lex, self.table[alias][0], row, col) for lex, alias, row, col in self._tokenize(text)]
+    def __call__(self, text: str) -> List[Token]:
+        return list(self.tokenize(text))

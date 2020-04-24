@@ -3,13 +3,12 @@ from typing import List
 
 import fire
 
-from cmp.parsing import Token
-from grammar import G
+from cmp.parsing.lexing import Token
 from lexer import CoolLexer
 from parser import CoolParser
 from semantic import Formatter
 
-lexer = CoolLexer(G)
+lexer = CoolLexer()
 parser = CoolParser()
 
 formatter = Formatter()
