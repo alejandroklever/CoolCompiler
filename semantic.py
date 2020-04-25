@@ -130,7 +130,7 @@ class Formatter:
 
 
 # noinspection PyDefaultArgument
-class ClassCollector:
+class TypeCollector:
     def __init__(self, context: Context = Context(), errors: List[str] = []):
         self.errors: List[str] = errors
         self.context: Context = context
