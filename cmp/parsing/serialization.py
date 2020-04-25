@@ -12,12 +12,12 @@ class %s(ShiftReduceParser, ABC):
         self.action = self.__action_table()
         self.goto = self.__goto_table()
 
-    def __action_table(self):
-        G = self.G
+    @staticmethod
+    def __action_table():
         return %s
 
-    def __goto_table(self):
-        G = self.G
+    @staticmethod
+    def __goto_table():
         return %s
 """
 
@@ -29,8 +29,8 @@ from %s import %s
 
 class %s(Lexer):
     def __init__(self):
-        self.lineno = 0
-        self.column = 0
+        self.lineno = 1
+        self.column = 1
         self.position = 0
         self.token = Token('', '', 0, 0)
         self.pattern = re.compile(r'%s')

@@ -1,9 +1,11 @@
 import inspect
+import time
 
 import astnodes as ast
 from cmp.parsing.parsing import LALR1Parser
 from cmp.pycompiler import Grammar
 
+t = time.time()
 G = Grammar()
 
 #################
@@ -64,7 +66,7 @@ G.add_terminals('+ - * / < <= = ~ not')
 def newline(lexer):
     lexer.lineno += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
-    lexer.column = 0
+    lexer.column = 1
 
 
 @G.terminal('whitespace', r' +')
@@ -81,9 +83,9 @@ def tab(lexer):
 
 @G.lexical_error
 def lexical_error(lexer):
-    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"\n')
-    lexer.position += 1
+    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"')
     lexer.column += 1
+    lexer.position += 1
 
 
 ###############
@@ -175,9 +177,9 @@ def attribute_error(s):
     return ast.AttrDeclarationNode(s[1], s[3])
 
 
-if __name__ == '__main__':
-    import time
+print('Build G :', time.time() - t)
 
+if __name__ == '__main__':
     t = time.time()
     G.serialize_lexer('CoolLexer', inspect.getmodulename(__file__))
     G.serialize_parser(LALR1Parser(G), 'CoolParser', inspect.getmodulename(__file__))

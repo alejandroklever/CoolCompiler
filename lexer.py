@@ -6,8 +6,8 @@ from grammar import G
 
 class CoolLexer(Lexer):
     def __init__(self):
-        self.lineno = 0
-        self.column = 0
+        self.lineno = 1
+        self.column = 1
         self.position = 0
         self.token = Token('', '', 0, 0)
         self.pattern = re.compile(r'(?P<newline>\n+)|(?P<whitespace> +)|(?P<tabulation>\t+)|(inherits)|(isvoid)|(class)|(while)|(false)|(then)|(else)|(loop)|(pool)|(case)|(esac)|(true)|(<\-)|(let)|(new)|(not)|(\{)|(\})|(\()|(\))|(\.)|(=>)|(if)|(fi)|(in)|(of)|(\+)|(\-)|(\*)|(<=)|(\~)|(,)|(:)|(;)|(@)|(/)|(<)|(=)|(?P<id>[a-z][a-zA-Z0-9_]*)|(?P<type>[A-Z][a-zA-Z0-9_]*)|(?P<string>\"[^\"]*\")|(?P<int>\d+)|(?P<char>\'[^\']*\')')

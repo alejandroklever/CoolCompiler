@@ -385,11 +385,28 @@ class ShiftReduceParser:
             state = stack[-1]
             lookahead = tokens[cursor]
 
+            ##########################
+            # Error Handling Section #
+            ##########################
             if (state, lookahead.token_type) not in self.action:
-                pass
-
-            assert (state, lookahead.token_type) in self.action, f'ParsingError: in ' \
-                f'{(state, lookahead.lex, lookahead.token_type)} '
+                try:
+                    # Try to insert an error token into the stack
+                    action, tag = self.action[state, self.G.ERROR]
+                    lookahead.token_type = self.G.ERROR
+                    stack += [lookahead.token_type, lookahead.lex, tag]
+                    cursor += 1
+                except KeyError:
+                    # If en error insertion fails then the parsing process enter into a panic mode recovery
+                    sys.stderr.write(f'{lookahead.line, lookahead.column} - SyntacticError: ERROR at or near "{lookahead.lex}"\n')
+                    while (state, lookahead.token_type) not in self.action:
+                        cursor += 1
+                        if cursor >= len(tokens):
+                            return None
+                        lookahead = tokens[cursor]
+                continue
+            #######
+            # End #
+            #######
 
             action, tag = self.action[state, lookahead.token_type]
 

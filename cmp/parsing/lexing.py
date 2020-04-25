@@ -48,8 +48,8 @@ class Lexer:
         if error_handler is None:
             error_handler = self.error
 
-        self.lineno: int = 0  # Current line number
-        self.column: int = 0  # Current column in the line
+        self.lineno: int = 1  # Current line number
+        self.column: int = 1  # Current column in the line
         self.position: int = 0  # Current position in recognition
         self.token: Token = Token('', '', 0, 0)  # Current token in recognition
         self.pattern: Pattern = self._build_regex(table)
@@ -74,23 +74,23 @@ class Lexer:
 
             if token_type in self.token_rules:
                 token = self.token_rules[token_type](self)
-                if token is None or not isinstance(token, Token):
-                    continue
-                yield token
+                if token is not None and isinstance(token, Token):
+                    yield token
+                continue
 
             yield self.token
 
             self.position = match.end()
-            self.column += len(match.string)
+            self.column += len(match.group())
         yield Token('$', self.eof, self.lineno, self.column)
 
     @staticmethod
     def print_error(error_msg):
-        sys.stderr(error_msg)
+        sys.stderr.write(error_msg + '\n')
 
     @staticmethod
     def error(lexer: 'Lexer') -> None:
-        lexer.print_error(f'LexerError: Unexpected symbol "{lexer.token.lex}"\n')
+        lexer.print_error(f'LexerError: Unexpected symbol "{lexer.token.lex}"')
         lexer.position += 1
         lexer.column += 1
 
