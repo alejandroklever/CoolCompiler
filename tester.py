@@ -3,7 +3,7 @@ from typing import List
 
 import fire
 
-from cmp.parsing.lexing import Token
+from cmp.lexing import Token
 from lexer import CoolLexer
 from parser import CoolParser
 from semantic import Formatter

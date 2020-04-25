@@ -1,5 +1,5 @@
 from abc import ABC
-from cmp.parsing.parsing import ShiftReduceParser
+from cmp.parsing import ShiftReduceParser
 from grammar import G
 
 

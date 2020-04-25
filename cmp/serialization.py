@@ -1,7 +1,7 @@
 import re
 
 PARSER_TEMPLATE = """from abc import ABC
-from cmp.parsing.parsing import ShiftReduceParser
+from cmp.parsing import ShiftReduceParser
 from %s import %s
 
 
@@ -23,7 +23,7 @@ class %s(ShiftReduceParser, ABC):
 
 LEXER_TEMPLATE = """import re
 
-from cmp.parsing.lexing import Token, Lexer
+from cmp.lexing import Token, Lexer
 from %s import %s
 
 

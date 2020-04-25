@@ -2,7 +2,7 @@ import inspect
 import time
 
 import astnodes as ast
-from cmp.parsing.parsing import LALR1Parser
+from cmp.parsing import LALR1Parser
 from cmp.pycompiler import Grammar
 
 t = time.time()

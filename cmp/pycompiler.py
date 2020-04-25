@@ -2,8 +2,8 @@ import json
 import re
 from typing import List, FrozenSet, Optional, Tuple, Iterable, Callable, Dict
 
-from cmp.parsing.lexing import Lexer, Token
-from cmp.parsing.serialization import LRParserSerializer, LexerSerializer
+from cmp.lexing import Lexer, Token
+from cmp.serialization import LRParserSerializer, LexerSerializer
 
 
 class GrammarError(Exception):
