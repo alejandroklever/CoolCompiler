@@ -125,7 +125,9 @@ dmypy.json
 
 .idea
 .vscode
-tests
+tests/*.py
+tests/*/*.py
+tests/codegen
 scripts
 Sera borrado Untitled.ipynb
 Sera borrado output.txt
