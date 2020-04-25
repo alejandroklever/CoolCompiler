@@ -171,10 +171,16 @@ expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
 G.add_terminal_error()
 
 
-@G.production("attribute -> id : type error")
+@G.production("feature-list ->  attribute error feature-list")
 def attribute_error(s):
     s.error(f"{s[3].line, s[3].column} - SyntacticError: Expected ';' instead of '{s[3].lex}'")
     return ast.AttrDeclarationNode(s[1], s[3])
+
+
+@G.production("feature-list ->  method error feature-list")
+def attribute_error(s):
+    s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    return s[1]
 
 
 print('Build G :', time.time() - t)

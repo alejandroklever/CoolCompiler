@@ -1,114 +1,119 @@
+from typing import List, Union, Tuple
+
+Feature = Union['MethodDeclarationNode', 'AttrDeclarationNode']
+
+
 class Node:
     pass
 
 
 class ProgramNode(Node):
     def __init__(self, declarations):
-        self.declarations = declarations
+        self.declarations: List[ClassDeclarationNode] = declarations
 
 
 class DeclarationNode(Node):
     pass
 
 
-class ExprNode(Node):
-    pass
-
-
 class ClassDeclarationNode(DeclarationNode):
     def __init__(self, idx, features, parent=None):
-        self.id = idx
-        self.parent = parent
-        self.features = features
+        self.id: str = idx
+        self.parent: str = parent
+        self.features: List[Feature] = features
 
 
 class MethodDeclarationNode(DeclarationNode):
     def __init__(self, idx, params, return_type, body):
-        self.id = idx
-        self.params = params
-        self.type = return_type
-        self.body = body
+        self.id: str = idx
+        self.params: List[Tuple[str, str]] = params
+        self.type: str = return_type
+        self.body: ExprNode = body
 
 
 class AttrDeclarationNode(DeclarationNode):
     def __init__(self, idx, typex, expr=None):
-        self.id = idx
-        self.type = typex
-        self.expr = expr
+        self.id: str = idx
+        self.type: str = typex
+        self.expr: ExprNode = expr
+
+
+class ExprNode(Node):
+    pass
 
 
 class BlockNode(ExprNode):
     def __init__(self, expressions):
-        self.expressions = expressions
+        self.expressions: List[ExprNode] = expressions
 
 
 class LetNode(ExprNode):
     def __init__(self, declarations, expr):
-        self.expr = expr
-        self.declarations = declarations
+        self.declarations: List[VarDeclarationNode] = declarations
+        self.expr: ExprNode = expr
 
 
 class SwitchCaseNode(ExprNode):
     def __init__(self, expr, cases):
-        self.expr = expr
-        self.cases = cases
+        self.expr: ExprNode = expr
+        self.cases: List[CaseNode] = cases
 
 
 class CaseNode(ExprNode):
     def __init__(self, idx, typex, expr):
-        self.id = idx
-        self.type = typex
-        self.expr = expr
+        self.id: str = idx
+        self.type: str = typex
+        self.expr: ExprNode = expr
 
 
 class VarDeclarationNode(ExprNode):
     def __init__(self, idx, typex, expr=None):
-        self.id = idx
-        self.type = typex
-        self.expr = expr
+        self.id: str = idx
+        self.type: str = typex
+        self.expr: ExprNode = expr
 
 
 class AssignNode(ExprNode):
     def __init__(self, idx, expr):
-        self.id = idx
-        self.expr = expr
+        self.id: str = idx
+        self.expr: ExprNode = expr
 
 
 class ConditionalNode(ExprNode):
     def __init__(self, ifx, then, elsex):
-        self.if_expr = ifx
-        self.then_expr = then
-        self.else_expr = elsex
+        self.if_expr: ExprNode = ifx
+        self.then_expr: ExprNode = then
+        self.else_expr: ExprNode = elsex
 
 
 class WhileNode(ExprNode):
     def __init__(self, condition, body):
-        self.condition = condition
-        self.body = body
+        self.condition: ExprNode = condition
+        self.body: ExprNode = body
 
 
 class MethodCallNode(ExprNode):
     def __init__(self, idx, args, obj=None, typex=None):
-        self.obj = obj
-        self.id = idx
-        self.args = args
-        self.type = typex
+        self.obj: ExprNode = obj
+        self.id: str = idx
+        self.args: List[ExprNode] = args
+        self.type: str = typex
 
 
 class AtomicNode(ExprNode):
     def __init__(self, lex):
-        self.lex = lex
+        self.lex: str = lex
 
 
 class UnaryNode(ExprNode):
     def __init__(self, obj):
-        self.obj = obj
+        self.obj: ExprNode = obj
 
 
 class BinaryNode(ExprNode):
     def __init__(self, left, right):
-        self.left = left
-        self.right = right
+        self.left: ExprNode = left
+        self.right: ExprNode = right
 
 
 class VariableNode(AtomicNode):

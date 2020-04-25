@@ -1,14 +1,12 @@
-"""
-This module contains definitions of classes for make different travels through the AST of a cool program.
-All classes defined here follows the visitor pattern using the module cmp.visitor, with this we can get a
-more decoupled inspection.
-"""
-from typing import List
+"""This module contains definitions of classes for make different travels through the AST of a cool program. All
+classes defined here follows the visitor pattern using the module cmp.visitor, with this we can get a more decoupled
+inspection. """
+from typing import List, Optional
 
 import astnodes as ast
 import visitor as visitor
 
-from scope import Context, SemanticError
+from scope import Context, SemanticError, Type, Scope, Method
 
 
 class Formatter:
@@ -129,7 +127,6 @@ class Formatter:
         return '\t' * tabs + f'\\__ InstantiateNode: new {node.lex}()'
 
 
-# noinspection PyDefaultArgument
 class TypeCollector:
     def __init__(self, context: Context = Context(), errors: List[str] = []):
         self.errors: List[str] = errors
@@ -142,8 +139,8 @@ class TypeCollector:
     @visitor.when(ast.ProgramNode)
     def visit(self, node):
         self.context = Context()
-        self.context.create_type('int')
-        self.context.create_type('void')
+        self.context.create_type('Int')
+        self.context.create_type('Void')
         for declaration in node.declarations:
             self.visit(declaration)
 
@@ -156,472 +153,420 @@ class TypeCollector:
 
 
 class TypeBuilder:
+    def __init__(self, context: Context, errors: List[str] = []):
+        self.context: Context = context
+        self.current_type: Optional[Type] = None
+        self.errors: List[str] = errors
+
     @visitor.on('node')
-    def visit(self, node, tabs):
+    def visit(self, node):
         pass
 
     @visitor.when(ast.ProgramNode)
     def visit(self, node: ast.ProgramNode):
-        pass
+        for declaration in node.declarations:
+            self.visit(declaration)
 
     @visitor.when(ast.ClassDeclarationNode)
     def visit(self, node: ast.ClassDeclarationNode):
-        pass
+        try:
+            self.current_type = self.context.get_type(node.id)
+            if node.parent is not None:
+                self.current_type.set_parent(self.context.get_type(node.parent))
+        except SemanticError as e:
+            self.errors.append(e.text)
+
+        for feature in node.features:
+            self.visit(feature)
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode):
-        pass
+        try:
+            name = node.id
+            typex = self.context.get_type(node.type)
+            self.current_type.define_attribute(name, typex)
+        except SemanticError as e:
+            self.errors.append(e.text)
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
-        pass
-
-    @visitor.when(ast.LetNode)
-    def visit(self, node: ast.LetNode):
-        pass
-
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode):
-        pass
-
-    @visitor.when(ast.AssignNode)
-    def visit(self, node: ast.AssignNode):
-        pass
-
-    @visitor.when(ast.BlockNode)
-    def visit(self, node: ast.BlockNode):
-        pass
-
-    @visitor.when(ast.ConditionalNode)
-    def visit(self, node: ast.ConditionalNode):
-        pass
-
-    @visitor.when(ast.WhileNode)
-    def visit(self, node: ast.WhileNode):
-        pass
-
-    @visitor.when(ast.SwitchCaseNode)
-    def visit(self, node: ast.SwitchCaseNode):
-        pass
-
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode):
-        pass
-
-    @visitor.when(ast.MethodCallNode)
-    def visit(self, node: ast.MethodCallNode):
-        pass
-
-    @visitor.when(ast.IntegerNode)
-    def visit(self, node: ast.IntegerNode):
-        pass
-
-    @visitor.when(ast.StringNode)
-    def visit(self, node: ast.StringNode):
-        pass
-
-    @visitor.when(ast.BooleanNode)
-    def visit(self, node: ast.BooleanNode):
-        pass
-
-    @visitor.when(ast.VariableNode)
-    def visit(self, node: ast.VariableNode):
-        pass
-
-    @visitor.when(ast.InstantiateNode)
-    def visit(self, node: ast.InstantiateNode):
-        pass
-
-    @visitor.when(ast.NegationNode)
-    def visit(self, node: ast.NegationNode):
-        pass
-
-    @visitor.when(ast.ComplementNode)
-    def visit(self, node: ast.ComplementNode):
-        pass
-
-    @visitor.when(ast.IsVoidNode)
-    def visit(self, node: ast.IsVoidNode):
-        pass
-
-    @visitor.when(ast.PlusNode)
-    def visit(self, node: ast.PlusNode):
-        pass
-
-    @visitor.when(ast.MinusNode)
-    def visit(self, node: ast.MinusNode):
-        pass
-
-    @visitor.when(ast.StarNode)
-    def visit(self, node: ast.StarNode):
-        pass
-
-    @visitor.when(ast.DivNode)
-    def visit(self, node: ast.DivNode):
-        pass
-
-    @visitor.when(ast.LessEqualNode)
-    def visit(self, node: ast.LessEqualNode):
-        pass
-
-    @visitor.when(ast.LessNode)
-    def visit(self, node: ast.LessNode):
-        pass
-
-    @visitor.when(ast.EqualNode)
-    def visit(self, node: ast.EqualNode):
-        pass
+        try:
+            name = node.id
+            param_names = [p[0] for p in node.params]
+            param_types = [self.context.get_type(p[1]) for p in node.params]
+            return_type = self.context.get_type(node.type)
+            self.current_type.define_method(name, param_names, param_types, return_type)
+        except SemanticError as e:
+            self.errors.append(e.text)
 
 
 class TypeChecker:
+    def __init__(self, context: Context, errors: List[str] = []):
+        self.context: Context = context
+        self.errors: List[str] = errors
+        self.current_type: Type = None
+        self.current_method: Method = None
+
     @visitor.on('node')
     def visit(self, node, tabs):
         pass
 
     @visitor.when(ast.ProgramNode)
-    def visit(self, node: ast.ProgramNode):
+    def visit(self, node: ast.ProgramNode, scope: Scope = None):
         pass
 
     @visitor.when(ast.ClassDeclarationNode)
-    def visit(self, node: ast.ClassDeclarationNode):
+    def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AttrDeclarationNode)
-    def visit(self, node: ast.AttrDeclarationNode):
+    def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodDeclarationNode)
-    def visit(self, node: ast.MethodDeclarationNode):
+    def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.LetNode)
-    def visit(self, node: ast.LetNode):
+    def visit(self, node: ast.LetNode, scope: Scope):
         pass
 
     @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode):
+    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AssignNode)
-    def visit(self, node: ast.AssignNode):
+    def visit(self, node: ast.AssignNode, scope: Scope):
         pass
 
     @visitor.when(ast.BlockNode)
-    def visit(self, node: ast.BlockNode):
+    def visit(self, node: ast.BlockNode, scope: Scope):
         pass
 
     @visitor.when(ast.ConditionalNode)
-    def visit(self, node: ast.ConditionalNode):
+    def visit(self, node: ast.ConditionalNode, scope: Scope):
         pass
 
     @visitor.when(ast.WhileNode)
-    def visit(self, node: ast.WhileNode):
+    def visit(self, node: ast.WhileNode, scope: Scope):
         pass
 
     @visitor.when(ast.SwitchCaseNode)
-    def visit(self, node: ast.SwitchCaseNode):
+    def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode):
+    def visit(self, node: ast.CaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodCallNode)
-    def visit(self, node: ast.MethodCallNode):
+    def visit(self, node: ast.MethodCallNode, scope: Scope):
         pass
 
     @visitor.when(ast.IntegerNode)
-    def visit(self, node: ast.IntegerNode):
+    def visit(self, node: ast.IntegerNode, scope: Scope):
         pass
 
     @visitor.when(ast.StringNode)
-    def visit(self, node: ast.StringNode):
+    def visit(self, node: ast.StringNode, scope: Scope):
         pass
 
     @visitor.when(ast.BooleanNode)
-    def visit(self, node: ast.BooleanNode):
+    def visit(self, node: ast.BooleanNode, scope: Scope):
         pass
 
     @visitor.when(ast.VariableNode)
-    def visit(self, node: ast.VariableNode):
+    def visit(self, node: ast.VariableNode, scope: Scope):
         pass
 
     @visitor.when(ast.InstantiateNode)
-    def visit(self, node: ast.InstantiateNode):
+    def visit(self, node: ast.InstantiateNode, scope: Scope):
         pass
 
     @visitor.when(ast.NegationNode)
-    def visit(self, node: ast.NegationNode):
+    def visit(self, node: ast.NegationNode, scope: Scope):
         pass
 
     @visitor.when(ast.ComplementNode)
-    def visit(self, node: ast.ComplementNode):
+    def visit(self, node: ast.ComplementNode, scope: Scope):
         pass
 
     @visitor.when(ast.IsVoidNode)
-    def visit(self, node: ast.IsVoidNode):
+    def visit(self, node: ast.IsVoidNode, scope: Scope):
         pass
 
     @visitor.when(ast.PlusNode)
-    def visit(self, node: ast.PlusNode):
+    def visit(self, node: ast.PlusNode, scope: Scope):
         pass
 
     @visitor.when(ast.MinusNode)
-    def visit(self, node: ast.MinusNode):
+    def visit(self, node: ast.MinusNode, scope: Scope):
         pass
 
     @visitor.when(ast.StarNode)
-    def visit(self, node: ast.StarNode):
+    def visit(self, node: ast.StarNode, scope: Scope):
         pass
 
     @visitor.when(ast.DivNode)
-    def visit(self, node: ast.DivNode):
+    def visit(self, node: ast.DivNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessEqualNode)
-    def visit(self, node: ast.LessEqualNode):
+    def visit(self, node: ast.LessEqualNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessNode)
-    def visit(self, node: ast.LessNode):
+    def visit(self, node: ast.LessNode, scope: Scope):
         pass
 
     @visitor.when(ast.EqualNode)
-    def visit(self, node: ast.EqualNode):
+    def visit(self, node: ast.EqualNode, scope: Scope):
         pass
 
 
 class InferenceTypeChecker:
+    def __init__(self, context: Context, errors: List[str] = []):
+        self.context: Context = context
+        self.errors: List[str] = errors
+        self.current_type: Type = None
+        self.current_method: Method = None
+
     @visitor.on('node')
     def visit(self, node, tabs):
         pass
 
     @visitor.when(ast.ProgramNode)
-    def visit(self, node: ast.ProgramNode):
+    def visit(self, node: ast.ProgramNode, scope: Scope = None):
         pass
 
     @visitor.when(ast.ClassDeclarationNode)
-    def visit(self, node: ast.ClassDeclarationNode):
+    def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AttrDeclarationNode)
-    def visit(self, node: ast.AttrDeclarationNode):
+    def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodDeclarationNode)
-    def visit(self, node: ast.MethodDeclarationNode):
+    def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.LetNode)
-    def visit(self, node: ast.LetNode):
+    def visit(self, node: ast.LetNode, scope: Scope):
         pass
 
     @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode):
+    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AssignNode)
-    def visit(self, node: ast.AssignNode):
+    def visit(self, node: ast.AssignNode, scope: Scope):
         pass
 
     @visitor.when(ast.BlockNode)
-    def visit(self, node: ast.BlockNode):
+    def visit(self, node: ast.BlockNode, scope: Scope):
         pass
 
     @visitor.when(ast.ConditionalNode)
-    def visit(self, node: ast.ConditionalNode):
+    def visit(self, node: ast.ConditionalNode, scope: Scope):
         pass
 
     @visitor.when(ast.WhileNode)
-    def visit(self, node: ast.WhileNode):
+    def visit(self, node: ast.WhileNode, scope: Scope):
         pass
 
     @visitor.when(ast.SwitchCaseNode)
-    def visit(self, node: ast.SwitchCaseNode):
+    def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode):
+    def visit(self, node: ast.CaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodCallNode)
-    def visit(self, node: ast.MethodCallNode):
+    def visit(self, node: ast.MethodCallNode, scope: Scope):
         pass
 
     @visitor.when(ast.IntegerNode)
-    def visit(self, node: ast.IntegerNode):
+    def visit(self, node: ast.IntegerNode, scope: Scope):
         pass
 
     @visitor.when(ast.StringNode)
-    def visit(self, node: ast.StringNode):
+    def visit(self, node: ast.StringNode, scope: Scope):
         pass
 
     @visitor.when(ast.BooleanNode)
-    def visit(self, node: ast.BooleanNode):
+    def visit(self, node: ast.BooleanNode, scope: Scope):
         pass
 
     @visitor.when(ast.VariableNode)
-    def visit(self, node: ast.VariableNode):
+    def visit(self, node: ast.VariableNode, scope: Scope):
         pass
 
     @visitor.when(ast.InstantiateNode)
-    def visit(self, node: ast.InstantiateNode):
+    def visit(self, node: ast.InstantiateNode, scope: Scope):
         pass
 
     @visitor.when(ast.NegationNode)
-    def visit(self, node: ast.NegationNode):
+    def visit(self, node: ast.NegationNode, scope: Scope):
         pass
 
     @visitor.when(ast.ComplementNode)
-    def visit(self, node: ast.ComplementNode):
+    def visit(self, node: ast.ComplementNode, scope: Scope):
         pass
 
     @visitor.when(ast.IsVoidNode)
-    def visit(self, node: ast.IsVoidNode):
+    def visit(self, node: ast.IsVoidNode, scope: Scope):
         pass
 
     @visitor.when(ast.PlusNode)
-    def visit(self, node: ast.PlusNode):
+    def visit(self, node: ast.PlusNode, scope: Scope):
         pass
 
     @visitor.when(ast.MinusNode)
-    def visit(self, node: ast.MinusNode):
+    def visit(self, node: ast.MinusNode, scope: Scope):
         pass
 
     @visitor.when(ast.StarNode)
-    def visit(self, node: ast.StarNode):
+    def visit(self, node: ast.StarNode, scope: Scope):
         pass
 
     @visitor.when(ast.DivNode)
-    def visit(self, node: ast.DivNode):
+    def visit(self, node: ast.DivNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessEqualNode)
-    def visit(self, node: ast.LessEqualNode):
+    def visit(self, node: ast.LessEqualNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessNode)
-    def visit(self, node: ast.LessNode):
+    def visit(self, node: ast.LessNode, scope: Scope):
         pass
 
     @visitor.when(ast.EqualNode)
-    def visit(self, node: ast.EqualNode):
+    def visit(self, node: ast.EqualNode, scope: Scope):
         pass
 
 
-class SemanticChecker:
+class Executor:
+    def __init__(self, context: Context, errors: List[str] = []):
+        self.context: Context = context
+        self.errors: List[str] = errors
+        self.current_type: Type = None
+        self.current_method: Method = None
+
     @visitor.on('node')
     def visit(self, node, tabs):
         pass
 
     @visitor.when(ast.ProgramNode)
-    def visit(self, node: ast.ProgramNode):
+    def visit(self, node: ast.ProgramNode, scope: Scope = None):
         pass
 
     @visitor.when(ast.ClassDeclarationNode)
-    def visit(self, node: ast.ClassDeclarationNode):
+    def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AttrDeclarationNode)
-    def visit(self, node: ast.AttrDeclarationNode):
+    def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodDeclarationNode)
-    def visit(self, node: ast.MethodDeclarationNode):
+    def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.LetNode)
-    def visit(self, node: ast.LetNode):
+    def visit(self, node: ast.LetNode, scope: Scope):
         pass
 
     @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode):
+    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         pass
 
     @visitor.when(ast.AssignNode)
-    def visit(self, node: ast.AssignNode):
+    def visit(self, node: ast.AssignNode, scope: Scope):
         pass
 
     @visitor.when(ast.BlockNode)
-    def visit(self, node: ast.BlockNode):
+    def visit(self, node: ast.BlockNode, scope: Scope):
         pass
 
     @visitor.when(ast.ConditionalNode)
-    def visit(self, node: ast.ConditionalNode):
+    def visit(self, node: ast.ConditionalNode, scope: Scope):
         pass
 
     @visitor.when(ast.WhileNode)
-    def visit(self, node: ast.WhileNode):
+    def visit(self, node: ast.WhileNode, scope: Scope):
         pass
 
     @visitor.when(ast.SwitchCaseNode)
-    def visit(self, node: ast.SwitchCaseNode):
+    def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode):
+    def visit(self, node: ast.CaseNode, scope: Scope):
         pass
 
     @visitor.when(ast.MethodCallNode)
-    def visit(self, node: ast.MethodCallNode):
+    def visit(self, node: ast.MethodCallNode, scope: Scope):
         pass
 
     @visitor.when(ast.IntegerNode)
-    def visit(self, node: ast.IntegerNode):
+    def visit(self, node: ast.IntegerNode, scope: Scope):
         pass
 
     @visitor.when(ast.StringNode)
-    def visit(self, node: ast.StringNode):
+    def visit(self, node: ast.StringNode, scope: Scope):
         pass
 
     @visitor.when(ast.BooleanNode)
-    def visit(self, node: ast.BooleanNode):
+    def visit(self, node: ast.BooleanNode, scope: Scope):
         pass
 
     @visitor.when(ast.VariableNode)
-    def visit(self, node: ast.VariableNode):
+    def visit(self, node: ast.VariableNode, scope: Scope):
         pass
 
     @visitor.when(ast.InstantiateNode)
-    def visit(self, node: ast.InstantiateNode):
+    def visit(self, node: ast.InstantiateNode, scope: Scope):
         pass
 
     @visitor.when(ast.NegationNode)
-    def visit(self, node: ast.NegationNode):
+    def visit(self, node: ast.NegationNode, scope: Scope):
         pass
 
     @visitor.when(ast.ComplementNode)
-    def visit(self, node: ast.ComplementNode):
+    def visit(self, node: ast.ComplementNode, scope: Scope):
         pass
 
     @visitor.when(ast.IsVoidNode)
-    def visit(self, node: ast.IsVoidNode):
+    def visit(self, node: ast.IsVoidNode, scope: Scope):
         pass
 
     @visitor.when(ast.PlusNode)
-    def visit(self, node: ast.PlusNode):
+    def visit(self, node: ast.PlusNode, scope: Scope):
         pass
 
     @visitor.when(ast.MinusNode)
-    def visit(self, node: ast.MinusNode):
+    def visit(self, node: ast.MinusNode, scope: Scope):
         pass
 
     @visitor.when(ast.StarNode)
-    def visit(self, node: ast.StarNode):
+    def visit(self, node: ast.StarNode, scope: Scope):
         pass
 
     @visitor.when(ast.DivNode)
-    def visit(self, node: ast.DivNode):
+    def visit(self, node: ast.DivNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessEqualNode)
-    def visit(self, node: ast.LessEqualNode):
+    def visit(self, node: ast.LessEqualNode, scope: Scope):
         pass
 
     @visitor.when(ast.LessNode)
-    def visit(self, node: ast.LessNode):
+    def visit(self, node: ast.LessNode, scope: Scope):
         pass
 
     @visitor.when(ast.EqualNode)
-    def visit(self, node: ast.EqualNode):
+    def visit(self, node: ast.EqualNode, scope: Scope):
         pass

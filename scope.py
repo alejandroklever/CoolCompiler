@@ -213,8 +213,8 @@ class Scope:
     def find_variable(self, vname: str) -> Optional[VariableInfo]:
         try:
             return self.locals[vname]
-        except StopIteration:
-            return self.parent.find_variable(vname, self.index) if self.parent is None else None
+        except KeyError:
+            return self.parent.find_variable(vname) if self.parent is not None else None
 
     def is_defined(self, vname) -> bool:
         return self.find_variable(vname) is not None
