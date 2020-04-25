@@ -1,1 +1,0 @@
-(62, 13) - SyntacticError: ERROR at or near "x"
