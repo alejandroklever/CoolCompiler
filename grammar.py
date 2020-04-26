@@ -5,7 +5,6 @@ import astnodes as ast
 from cmp.parsing import LALR1Parser
 from cmp.pycompiler import Grammar
 
-t = time.time()
 G = Grammar()
 
 #################
@@ -57,6 +56,33 @@ G.add_terminals('class inherits if then else fi while loop pool let in case of e
 # Operators #
 #############
 G.add_terminals('+ - * / < <= = ~ not')
+
+
+############
+# Comments #
+############
+@G.terminal('comment', r'(\(\*[^$]*\*\))|--.*')
+def comment(lexer):
+    lex = lexer.token.lex
+    for s in lex:
+        if s == '\n':
+            lexer.lineno += 1
+            lexer.column = 0
+        lexer.column = 1
+    lexer.position += len(lex)
+
+
+@G.terminal('comment_error', r'\(\*(.|\n)*$')
+def comment(lexer):
+    lexer.contain_errors = True
+    lex = lexer.token.lex
+    for s in lex:
+        if s == '\n':
+            lexer.lineno += 1
+            lexer.column = 0
+        lexer.column = 1
+    lexer.position += len(lex)
+    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: EOF in comment')
 
 
 ##################
@@ -173,7 +199,7 @@ G.add_terminal_error()
 
 @G.production("feature-list ->  attribute error feature-list")
 def attribute_error(s):
-    s.error(f"{s[3].line, s[3].column} - SyntacticError: Expected ';' instead of '{s[3].lex}'")
+    s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return ast.AttrDeclarationNode(s[1], s[3])
 
 
@@ -183,10 +209,14 @@ def attribute_error(s):
     return s[1]
 
 
-print('Build G :', time.time() - t)
+@G.production("case-list -> id : type => expr ;")
+def case_list_error(s):
+    s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
+    return [ast.CaseNode(s[1], s[3], s[5])]
+
 
 if __name__ == '__main__':
     t = time.time()
     G.serialize_lexer('CoolLexer', inspect.getmodulename(__file__))
     G.serialize_parser(LALR1Parser(G), 'CoolParser', inspect.getmodulename(__file__))
-    print(time.time() - t)
+    print('Serialization Time :', time.time() - t, 'seconds')

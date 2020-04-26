@@ -3,14 +3,12 @@ from parser import CoolParser
 from scope import Context
 from semantic import TypeCollector, TypeBuilder, TypeChecker, InferenceTypeChecker, Executor
 
-program = """
-class Main {
-    main ( msg : String ) : Void {
-        let a: Int <- 25, b: Int <- 15 in {
-            a + +;
-        }
+program = r"""
+class Main inherits IO {
+    main(): IO {
+        out_string("Hello, World.\n")
     };
-}
+};
 """
 
 lexer = CoolLexer()
