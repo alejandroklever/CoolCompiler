@@ -1,6 +1,5 @@
-import itertools
 from collections import OrderedDict
-from typing import List, Optional, Iterable, Dict
+from typing import List, Optional, Dict
 
 
 class SemanticError(Exception):
@@ -41,8 +40,8 @@ class Method:
 class Type:
     def __init__(self, name: str):
         self.name: str = name
-        self.attributes: List[Attribute] = []
-        self.methods: List[Method] = []
+        self.attributes: Dict[str, Attribute] = []
+        self.methods: Dict[str, Method] = []
         self.parent: Optional['Type'] = None
 
     def set_parent(self, parent: 'Type') -> None:
@@ -52,8 +51,8 @@ class Type:
 
     def get_attribute(self, name: str) -> Attribute:
         try:
-            return next(attr for attr in self.attributes if attr.name == name)
-        except StopIteration:
+            return self.methods[name]
+        except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Attribute "{name}" is not defined in {self.name}.')
             try:
@@ -66,14 +65,14 @@ class Type:
             self.get_attribute(name)
         except SemanticError:
             attribute = Attribute(name, typex)
-            self.attributes.append(attribute)
+            self.attributes[name] = attribute
             return attribute
         else:
             raise SemanticError(f'Attribute "{name}" is already defined in {self.name}.')
 
     def get_method(self, name: str) -> Method:
         try:
-            return next(method for method in self.methods if method.name == name)
+            return self.methods[name]
         except StopIteration:
             if self.parent is None:
                 raise SemanticError(f'Method "{name}" is not defined in {self.name}.')
@@ -86,22 +85,22 @@ class Type:
                       param_names: List[str],
                       param_types: List['Type'],
                       return_type: 'Type') -> Method:
-        if name in (method.name for method in self.methods):
+        if name in self.methods:
             raise SemanticError(f'Method "{name}" already defined in {self.name}')
 
         method = Method(name, param_names, param_types, return_type)
-        self.methods.append(method)
+        self.methods[name] = method
         return method
 
     def all_attributes(self, clean: bool = True):
         plain = OrderedDict() if self.parent is None else self.parent.all_attributes(False)
-        for attr in self.attributes:
+        for attr in self.attributes.values():
             plain[attr.name] = (attr, self)
         return plain.values() if clean else plain
 
     def all_methods(self, clean: bool = True):
         plain = OrderedDict() if self.parent is None else self.parent.all_methods(False)
-        for method in self.methods:
+        for method in self.methods.values():
             plain[method.name] = (method, self)
         return plain.values() if clean else plain
 
@@ -140,20 +139,6 @@ class ErrorType(Type):
 
     def __eq__(self, other):
         return isinstance(other, Type)
-
-
-class VoidType(Type):
-    def __init__(self):
-        super().__init__('<void>')
-
-    def conforms_to(self, other):
-        raise Exception('Invalid type: void type.')
-
-    def bypass(self):
-        return True
-
-    def __eq__(self, other):
-        return isinstance(other, VoidType)
 
 
 class IntType(Type):

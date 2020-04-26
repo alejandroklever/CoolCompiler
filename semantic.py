@@ -184,7 +184,7 @@ class TypeCollector:
         string_type.define_method('length', [], [], self.context.get_type('Int'))
         string_type.define_method('concat', ['s'], [self.context.get_type('String')], self.context.get_type('String'))
         string_type.define_method('substr', ['i', 'l'], [self.context.get_type('Int'), self.context.get_type('int')],
-                                  self.context.get_type('Int'))
+                                  self.context.get_type('String'))
 
         for declaration in node.declarations:
             self.visit(declaration)
