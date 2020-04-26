@@ -163,6 +163,8 @@ class TypeCollector:
     @visitor.when(ast.ProgramNode)
     def visit(self, node):
         self.context = Context()
+        self.context.create_type('SELF_TYPE')
+        self.context.create_type('AUTO_TYPE')
         object_type = self.context.create_type('Object')
         io_type = self.context.create_type('IO')
         string_type = self.context.create_type('String')
