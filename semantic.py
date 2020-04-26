@@ -8,6 +8,30 @@ import visitor as visitor
 
 from scope import Context, SemanticError, Type, Scope, Method
 
+"""
+Object
+    abort() : Object
+    type_name() : String
+    copy() : SELF_TYPE
+
+IO
+    out_string(x : String) : SELF_TYPE
+    out_int(x : Int) : SELF_TYPE
+    in_string() : String
+    in_int() : Int
+
+Int (Sealed)
+    default -> 0
+
+Bool (Sealed)
+    default -> False
+
+String
+    length() : Int
+    concat(s : String) : String
+    substr(i : Int, l : Int) : String
+"""
+
 
 class Formatter:
     @visitor.on('node')
@@ -139,8 +163,27 @@ class TypeCollector:
     @visitor.when(ast.ProgramNode)
     def visit(self, node):
         self.context = Context()
+        object_type = self.context.create_type('Object')
+        io_type = self.context.create_type('IO')
+        string_type = self.context.create_type('String')
         self.context.create_type('Int')
-        self.context.create_type('Void')
+        self.context.create_type('Bool')
+
+        object_type.define_method('abort', [], [], self.context.get_type('Object'))
+        object_type.define_method('get_type', [], [], self.context.get_type('String'))
+        object_type.define_method('abort', [], [], self.context.get_type('SELF_TYPE'))
+
+        io_type.define_method('out_string', ['x'], [self.context.get_type('String')],
+                              self.context.get_type('SELF_TYPE'))
+        io_type.define_method('out_int', ['x'], [self.context.get_type('Int')], self.context.get_type('SELF_TYPE'))
+        io_type.define_method('in_string', [], [], self.context.get_type('String'))
+        io_type.define_method('in_int', [], [], self.context.get_type('Int'))
+
+        string_type.define_method('length', [], [], self.context.get_type('Int'))
+        string_type.define_method('concat', ['s'], [self.context.get_type('String')], self.context.get_type('String'))
+        string_type.define_method('substr', ['i', 'l'], [self.context.get_type('Int'), self.context.get_type('int')],
+                                  self.context.get_type('Int'))
+
         for declaration in node.declarations:
             self.visit(declaration)
 
@@ -172,7 +215,11 @@ class TypeBuilder:
         try:
             self.current_type = self.context.get_type(node.id)
             if node.parent is not None:
+                if node.parent in ('Int', 'Bool'):
+                    self.errors.append(f'Cannot inherit from type "{node.parent}"')
                 self.current_type.set_parent(self.context.get_type(node.parent))
+            else:
+                self.current_type.set_parent(self.context.get_type('Object'))
         except SemanticError as e:
             self.errors.append(e.text)
 
