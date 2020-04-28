@@ -2,8 +2,8 @@ import json
 import re
 from typing import List, FrozenSet, Optional, Tuple, Iterable, Callable, Dict
 
-from cmp.lexing import Lexer, Token
-from cmp.serialization import LRParserSerializer, LexerSerializer
+from .lexing import Lexer, Token
+from .serialization import LRParserSerializer, LexerSerializer
 
 
 class GrammarError(Exception):
@@ -43,7 +43,7 @@ class Symbol:
 
 
 class NonTerminal(Symbol):
-    def __init__(self, name, grammar):
+    def __init__(self, name: str, grammar: 'Grammar'):
         super().__init__(name, grammar)
         self.productions: List['Production'] = []
         self.error_productions: List['Production'] = []
@@ -76,7 +76,10 @@ class NonTerminal(Symbol):
                 else:
                     other = self.grammar.EPSILON, other[1]
 
-            if isinstance(other[0], Symbol) or isinstance(other[0], Sentence):
+            if isinstance(other[0], Symbol) and not isinstance(other[0], Sentence):
+                other[0] = Sentence(other[0])
+
+            if isinstance(other[0], Sentence):
                 p = Production(self, other[0], other[1])
             else:
                 raise TypeError("Valid types for a production are 'Symbol', 'Sentence' or 'str'")
@@ -269,7 +272,7 @@ class Grammar:
         self.productions: List[Production] = []
         self.non_terminals: List[NonTerminal] = []
         self.terminals: List[Terminal] = []
-        self.start_symbol: NonTerminal = None
+        self.start_symbol: Optional[NonTerminal] = None
 
         self.ERROR: ErrorTerminal = ErrorTerminal(self)
         self.EPSILON: Epsilon = Epsilon(self)
@@ -356,7 +359,7 @@ class Grammar:
         return term
 
     def add_non_terminals(self, names: str) -> Tuple[NonTerminal, ...]:
-        return tuple((self.add_non_terminal(x) for x in names.strip().split()))
+        return tuple(self.add_non_terminal(x) for x in names.strip().split())
 
     def add_production(self, production: Production):
         production.left.productions.append(production)
@@ -399,6 +402,7 @@ class Grammar:
 
     def lexical_error(self, handler: Callable[[Lexer], None]):
         self.lexical_error_handler = handler
+        return handler
 
     def augmented_grammar(self, force: bool = False):
         if not self.is_augmented_grammar or force:
