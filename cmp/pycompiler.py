@@ -377,6 +377,7 @@ class Grammar:
             head, body = production.split('->')
             head = self[head.strip()]
             head %= body.strip(), rule
+            return rule
 
         return decorator
 
@@ -392,6 +393,7 @@ class Grammar:
         """
         def decorator(rule: Optional[Callable[[Lexer], Optional[Token]]]):
             self.add_terminal(name, regex, rule)
+            return rule
 
         return decorator
 
