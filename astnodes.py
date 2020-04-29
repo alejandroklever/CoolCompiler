@@ -164,7 +164,7 @@ class DivNode(BinaryNode):
     pass
 
 
-class LessNode(BinaryNode):
+class LessThanNode(BinaryNode):
     pass
 
 

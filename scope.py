@@ -40,8 +40,8 @@ class Method:
 class Type:
     def __init__(self, name: str):
         self.name: str = name
-        self.attributes: Dict[str, Attribute] = []
-        self.methods: Dict[str, Method] = []
+        self.attributes: Dict[str, Attribute] = {}
+        self.methods: Dict[str, Method] = {}
         self.parent: Optional['Type'] = None
 
     def set_parent(self, parent: 'Type') -> None:
@@ -51,7 +51,7 @@ class Type:
 
     def get_attribute(self, name: str) -> Attribute:
         try:
-            return self.methods[name]
+            return self.attributes[name]
         except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Attribute "{name}" is not defined in {self.name}.')
@@ -143,10 +143,58 @@ class ErrorType(Type):
 
 class IntType(Type):
     def __init__(self):
-        super().__init__('int')
+        super().__init__('Int')
 
     def __eq__(self, other):
         return other.name == self.name or isinstance(other, IntType)
+
+
+class StringType(Type):
+    def __init__(self):
+        super().__init__('String')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, StringType)
+
+
+class ObjectType(Type):
+    def __init__(self):
+        super().__init__('Object')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, ObjectType)
+
+
+class IOType(Type):
+    def __init__(self):
+        super().__init__('IO')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, IOType)
+
+
+class BoolType(Type):
+    def __init__(self):
+        super().__init__('Bool')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, BoolType)
+
+
+class SelfType(Type):
+    def __init__(self):
+        super().__init__('SELF_TYPE')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, SelfType)
+
+
+class AutoType(Type):
+    def __init__(self):
+        super(AutoType, self).__init__('AUTO_TYPE')
+
+    def __eq__(self, other):
+        return other.name == self.name or isinstance(other, AutoType)
 
 
 class Context:

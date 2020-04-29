@@ -147,7 +147,7 @@ expr %= 'case expr of case-list esac', lambda s: ast.SwitchCaseNode(s[2], s[4])
 expr %= 'not expr', lambda s: ast.NegationNode(s[2])
 expr %= 'comp', lambda s: s[1]
 
-comp %= 'arith < arith', lambda s: ast.LessNode(s[1], s[3])
+comp %= 'arith < arith', lambda s: ast.LessThanNode(s[1], s[3])
 comp %= 'arith <= arith', lambda s: ast.LessEqualNode(s[1], s[3])
 comp %= 'arith = arith', lambda s: ast.EqualNode(s[1], s[3])
 comp %= 'arith', lambda s: s[1]
@@ -197,13 +197,13 @@ expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
 G.add_terminal_error()
 
 
-@G.production("feature-list ->  attribute error feature-list")
+@G.production("feature-list -> attribute error feature-list")
 def attribute_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return ast.AttrDeclarationNode(s[1], s[3])
 
 
-@G.production("feature-list ->  method error feature-list")
+@G.production("feature-list -> method error feature-list")
 def attribute_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return s[1]
