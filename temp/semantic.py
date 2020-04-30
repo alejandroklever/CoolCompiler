@@ -4,7 +4,7 @@ inspection. """
 from typing import List, Optional
 
 import astnodes as ast
-import visitor as visitor
+import visitor
 
 from scope import Context, SemanticError, Type, Scope, Method, AutoType, IntType, BoolType, StringType, ErrorType, \
     SelfType
@@ -286,19 +286,25 @@ class TypeChecker:
             scope = Scope()
 
         for elem in node.declarations:
-            self.visit(elem, scope)
+            self.visit(elem, scope.create_child())
 
     @visitor.when(ast.ClassDeclarationNode)
     def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         self.current_type = self.context.get_type(node.id)
-        for elem in node.features:
-            self.visit(elem, scope)
+        attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
+        methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
+
+        for attr in attrs:
+            self.visit(attr, scope)
+
+        for method in methods:
+            self.visit(method, scope.create_child())
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
         expected_type = self.context.get_type(node.type)
         if node.expr is not None:
-            typex = self.visit(node.expr, scope)
+            typex = self.visit(node.expr, scope.create_child())
             if not typex.conforms_to(expected_type):
                 self.errors.append(INCOMPATIBLE_TYPES % (node.type, expected_type.name))
         scope.define_variable(node.id, expected_type)
@@ -311,22 +317,22 @@ class TypeChecker:
                 self.errors.append(LOCAL_ALREADY_DEFINED % (param[0], self.current_method.name))
             else:
                 scope.define_variable(param[0], self.context.get_type(param[1]))
-        tipo = self.visit(node.body, scope.create_child())
+        typex = self.visit(node.body, scope.create_child())
         expected_type = self.context.get_type(node.type)
-        if not tipo.conforms_to(expected_type):
-            self.errors.append(INCOMPATIBLE_TYPES % (tipo.name, expected_type.name))
+        if not typex.conforms_to(expected_type):
+            self.errors.append(INCOMPATIBLE_TYPES % (typex.name, expected_type.name))
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
         for elem in node.declarations:
             self.visit(elem, scope)
-        return self.visit(node.expr, scope)
+        return self.visit(node.expr, scope.create_child())
 
     @visitor.when(ast.VarDeclarationNode)
     def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         try:
             expected_type = self.context.get_type(node.type)
-            if expected_type.name == 'SELF_TYPE':
+            if expected_type == SelfType():
                 expected_type = self.current_type
         except SemanticError as e:
             expected_type = self.context.get_type('Object')
@@ -429,9 +435,9 @@ class TypeChecker:
     def visit(self, node: ast.VariableNode, scope: Scope):
         var = scope.find_variable(node.lex)
         if var is None:
-            var = self.context.get_type('Object')
             self.errors.append(VARIABLE_NOT_DEFINED % (node.lex, self.current_method.name))
-        return var.type if var.name != 'SELF_TYPE' else self.current_type
+            return ErrorType()
+        return var.type
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):

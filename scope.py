@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 
 class SemanticError(Exception):
@@ -231,7 +231,6 @@ class Scope:
         self.locals: Dict[str, VariableInfo] = {}
         self.parent: Optional['Scope'] = parent
         self.children: List[Scope] = []
-        self.index: int = 0 if parent is None else len(parent)
 
     def create_child(self) -> 'Scope':
         child = Scope(self)
