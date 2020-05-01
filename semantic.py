@@ -4,9 +4,9 @@ inspection. """
 from typing import List, Optional, Dict
 
 import astnodes as ast
-import visitor as visitor
-
-from scope import Context, SemanticError, Type, Scope, Method
+import visitor
+from scope import Context, SemanticError, Type, Scope, Method, AutoType, IntType, BoolType, StringType, ErrorType, \
+    SelfType, ObjectType, IOType
 
 """
 Object
@@ -32,24 +32,56 @@ String
     substr(i : Int, l : Int) : String
 """
 
+WRONG_SIGNATURE = 'Method "%s" already defined in "%s" with a different signature.'
+SELF_IS_READONLY = 'Variable "self" is read-only.'
+LOCAL_ALREADY_DEFINED = 'Variable "%s" is already defined in method "%s".'
+INCOMPATIBLE_TYPES = 'Cannot convert "%s" into "%s".'
+VARIABLE_NOT_DEFINED = 'Variable "%s" is not defined in "%s".'
+INVALID_BINARY_OPERATION = 'Operation "%s" is not defined between "%s" and "%s".'
+INVALID_UNARY_OPERATION = 'Operation "%s" is not defined for "%s".'
 
-def topological_order(context: Context):
+
+def topological_order(program_node: ast.ProgramNode, context: Context):
+    """
+    Set an order in the program node of de ast such that for all class A with parent B, class B is before A in the
+    list, if in the process is detected a cycle, or exist a class derived from "Int", "String" or "Bool" then an
+    assertion error is throw.
+
+    :param program_node: Root of the first AST of the program
+
+    :param context: Context With all collected and building types
+
+    :return: a List[str] "l" where l[i] contains the name of the Type number i in the topological order
+    """
     types = context.types
 
-    graph: Dict[str, List[str]] = {}
+    graph: Dict[str, List[str]] = {name: [] for name in types}
 
     for name, typex in types.items():
         if name == 'Object':
             continue
+        graph[typex.parent.name].append(name)
 
-        parent = typex.parent
-        if parent is None:
-            pass
+    assert graph['Int'] == graph['String'] == graph['Bool'] == [], 'Can not inherits from "Int", "String", "Bool".'
 
-        try:
-            graph[parent.name].append(name)
-        except KeyError:
-            graph[parent.name] = []
+    order = []
+    visited = {name: False for name in graph}
+    stack = ['Object']
+
+    while stack:
+        current_name = stack.pop()
+
+        assert not visited[current_name], f'Cyclic class hierarchy in class {current_name}.'
+
+        visited[current_name] = True
+        stack += graph[current_name]
+        order.append(current_name)
+
+    declarations = {d.id: d for d in program_node.declarations}
+    program_node.declarations = [declarations[name] for name in order if
+                                 name not in ('Object', 'Int', 'IO', 'String', 'Bool')]
+
+    return order
 
 
 class Formatter:
@@ -175,11 +207,8 @@ class TypeCollector:
 
     Params
     ----------
-    errors: List[str]
-        is a list of errors detected in the ast travel
-    context: Context
-        the context for keeping the classes
-    """
+    - errors: List[str] is a list of errors detected in the ast travel
+    - context: Context the context for keeping the classes"""
 
     def __init__(self, context: Context = Context(), errors: List[str] = []):
         self.errors: List[str] = errors
@@ -191,29 +220,31 @@ class TypeCollector:
 
     @visitor.when(ast.ProgramNode)
     def visit(self, node):
-        self.context = Context()
-        self.context.create_type('SELF_TYPE')
-        self.context.create_type('AUTO_TYPE')
-        object_type = self.context.create_type('Object')
-        io_type = self.context.create_type('IO')
-        string_type = self.context.create_type('String')
-        self.context.create_type('Int')
-        self.context.create_type('Bool')
+        self.context.types['AUTO_TYPE'] = AutoType()
+        self_type = self.context.types['SELF_TYPE'] = SelfType()
+        object_type = self.context.types['Object'] = ObjectType()
+        io_type = self.context.types['IO'] = IOType()
+        string_type = self.context.types['String'] = StringType()
+        int_type = self.context.types['Int'] = IntType()
+        bool_type = self.context.types['Bool'] = BoolType()
 
-        object_type.define_method('abort', [], [], self.context.get_type('Object'))
-        object_type.define_method('get_type', [], [], self.context.get_type('String'))
-        object_type.define_method('abort', [], [], self.context.get_type('SELF_TYPE'))
+        io_type.set_parent(object_type)
+        string_type.set_parent(object_type)
+        int_type.set_parent(object_type)
+        bool_type.set_parent(object_type)
 
-        io_type.define_method('out_string', ['x'], [self.context.get_type('String')],
-                              self.context.get_type('SELF_TYPE'))
-        io_type.define_method('out_int', ['x'], [self.context.get_type('Int')], self.context.get_type('SELF_TYPE'))
-        io_type.define_method('in_string', [], [], self.context.get_type('String'))
-        io_type.define_method('in_int', [], [], self.context.get_type('Int'))
+        object_type.define_method('abort', [], [], object_type)
+        object_type.define_method('get_type', [], [], string_type)
+        object_type.define_method('copy', [], [], self_type)
 
-        string_type.define_method('length', [], [], self.context.get_type('Int'))
-        string_type.define_method('concat', ['s'], [self.context.get_type('String')], self.context.get_type('String'))
-        string_type.define_method('substr', ['i', 'l'], [self.context.get_type('Int'), self.context.get_type('int')],
-                                  self.context.get_type('String'))
+        io_type.define_method('out_string', ['x'], [string_type], self_type)
+        io_type.define_method('out_int', ['x'], [int_type], self_type)
+        io_type.define_method('in_string', [], [], string_type)
+        io_type.define_method('in_int', [], [], int_type)
+
+        string_type.define_method('length', [], [], int_type)
+        string_type.define_method('concat', ['s'], [string_type], string_type)
+        string_type.define_method('substr', ['i', 'l'], [int_type, int_type], string_type)
 
         for declaration in node.declarations:
             self.visit(declaration)
@@ -243,16 +274,15 @@ class TypeBuilder:
 
     @visitor.when(ast.ClassDeclarationNode)
     def visit(self, node: ast.ClassDeclarationNode):
-        try:
-            self.current_type = self.context.get_type(node.id)
-            if node.parent is not None:
-                if node.parent in ('Int', 'Bool'):
-                    self.errors.append(f'Cannot inherit from type "{node.parent}"')
-                self.current_type.set_parent(self.context.get_type(node.parent))
-            else:
-                self.current_type.set_parent(self.context.get_type('Object'))
-        except SemanticError as e:
-            self.errors.append(e.text)
+        self.current_type = self.context.get_type(node.id)
+
+        if node.parent is not None:
+            try:
+                self.current_type.set_parent(node.parent)
+            except SemanticError as e:
+                self.errors.append(e.text)
+        else:
+            self.current_type.set_parent(ObjectType())
 
         for feature in node.features:
             self.visit(feature)
@@ -268,14 +298,32 @@ class TypeBuilder:
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
+        name = node.id
+        param_names = []
+        param_types = []
+        for name, typex in node.params:
+            param_names.append(name)
+            try:
+                param_types.append(self.context.get_type(name))
+            except SemanticError as e:
+                param_types.append(ErrorType())
+                self.errors.append(e.text)
+
         try:
-            name = node.id
-            param_names = [p[0] for p in node.params]
-            param_types = [self.context.get_type(p[1]) for p in node.params]
             return_type = self.context.get_type(node.type)
-            self.current_type.define_method(name, param_names, param_types, return_type)
         except SemanticError as e:
+            return_type = ErrorType()
             self.errors.append(e.text)
+
+        self.current_type.define_method(name, param_names, param_types, return_type)
+
+
+class SetterGetterCreator:
+    def __init__(self, context: Context, errors: List[str] = []):
+        self.context: Context = context
+        self.errors: List[str] = errors
+        self.current_type: Type = None
+        self.current_method: Method = None
 
 
 class TypeChecker:
@@ -291,115 +339,233 @@ class TypeChecker:
 
     @visitor.when(ast.ProgramNode)
     def visit(self, node: ast.ProgramNode, scope: Scope = None):
-        pass
+        if scope is None:
+            scope = Scope()
+
+        for elem in node.declarations:
+            self.visit(elem, scope.create_child())
 
     @visitor.when(ast.ClassDeclarationNode)
     def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
-        pass
+        self.current_type = self.context.get_type(node.id)
+        attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
+        methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
+
+        for attr in attrs:
+            self.visit(attr, scope)
+
+        for method in methods:
+            self.visit(method, scope.create_child())
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
-        pass
+        expected_type = self.context.get_type(node.type)
+        if node.expr is not None:
+            typex = self.visit(node.expr, scope.create_child())
+            if not typex.conforms_to(expected_type):
+                self.errors.append(INCOMPATIBLE_TYPES % (node.type, expected_type.name))
+        scope.define_variable(node.id, expected_type)
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
-        pass
+        self.current_method = self.current_type.get_method(node.id)
+
+        for i, (name, typex) in enumerate(node.params):
+            if scope.is_defined(name):
+                self.errors.append(LOCAL_ALREADY_DEFINED % (name, self.current_method.name))
+            else:
+                scope.define_variable(name, self.context.get_type(typex))
+
+        typex = self.visit(node.body, scope.create_child())
+        expected_type = self.context.get_type(node.type)
+        if not typex.conforms_to(expected_type):
+            self.errors.append(INCOMPATIBLE_TYPES % (typex.name, expected_type.name))
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        pass
+        for elem in node.declarations:
+            self.visit(elem, scope)
+        return self.visit(node.expr, scope.create_child())
 
     @visitor.when(ast.VarDeclarationNode)
     def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-        pass
+        try:
+            expected_type = self.context.get_type(node.type)
+        except SemanticError as e:
+            expected_type = ErrorType()
+            self.errors.append(e.text)
+
+        if scope.is_local(node.id):
+            self.errors.append(LOCAL_ALREADY_DEFINED % (node.id, self.current_method.name))
+        else:
+            scope.define_variable(node.id, expected_type)
+
+        if node.expr is not None:
+            typex = self.visit(node.expr, scope)
+            if not (typex.conforms_to(expected_type)):
+                self.errors.append(INCOMPATIBLE_TYPES % (typex.name, expected_type.name))
+
+        return expected_type
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
-        pass
+        return_type = self.visit(node.expr, scope)
+        var = scope.find_variable(node.id)
+        if var is None:
+            self.errors.append(VARIABLE_NOT_DEFINED % (node.id, self.current_method.name))
+        else:
+            if not return_type.conforms_to(var.type):
+                self.errors.append(INCOMPATIBLE_TYPES % (return_type.name, var.type.name))
+        return var.type
 
     @visitor.when(ast.BlockNode)
     def visit(self, node: ast.BlockNode, scope: Scope):
-        pass
+        return_type = ErrorType()
+        for expr in node.expressions:
+            return_type = self.visit(expr, scope)
+        return return_type
 
     @visitor.when(ast.ConditionalNode)
     def visit(self, node: ast.ConditionalNode, scope: Scope):
-        pass
+        if_type = self.visit(node.if_expr, scope)
+        then_type = self.visit(node.then_expr, scope)
+        else_type = self.visit(node.else_expr, scope)
+        if if_type != BoolType:
+            self.errors.append(INCOMPATIBLE_TYPES % (if_type.name, 'Bool'))
+        if then_type.conforms_to(else_type):
+            return then_type
+        if else_type.conforms_to(then_type):
+            return then_type
+        return ErrorType()
 
     @visitor.when(ast.WhileNode)
     def visit(self, node: ast.WhileNode, scope: Scope):
-        pass
+        condition = self.visit(node.condition, scope)
+        if condition != BoolType():
+            self.errors.append(INCOMPATIBLE_TYPES % (condition.name, 'Bool'))
+        return self.visit(node.body, scope)
 
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
-        pass
+        self.visit(node.expr, scope)
+        for item in node.cases:
+            self.visit(item, scope.create_child())
+        return self.context.get_type('Object')
 
     @visitor.when(ast.CaseNode)
     def visit(self, node: ast.CaseNode, scope: Scope):
-        pass
+        try:
+            v = scope.define_variable(node.id, self.context.get_type(node.type))
+        except SemanticError as e:
+            v = scope.define_variable(node.id, self.context.get_type('Object'))
+            self.errors.append(e.text)
+        self.visit(node.expr, scope)
+        return v.type if v.type.name != 'SELF_TYPE' else self.current_type
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
-        pass
+        typex = self.visit(node.obj, scope)
+        try:
+            method = typex.get_method(node.id)
+        except SemanticError:
+            self.errors.append(f'Method "{node.id}" is not defined in {node.type}.')
+            method = None
+        if method is not None and len(node.args) + 1 != len(method.param_names):
+            self.errors.append(WRONG_SIGNATURE % (method.name, typex.name))
+        for i, var in enumerate(node.args):
+            var_type = self.visit(var, scope)
+            if method is not None:
+                expected_return_type = method.param_types[i + 1]
+                if not var_type.conforms_to(expected_return_type):
+                    self.errors.append(INCOMPATIBLE_TYPES % (var_type.name, expected_return_type.name))
+        return self.context.get_type('Object') if method is None else method.return_type
 
     @visitor.when(ast.IntegerNode)
     def visit(self, node: ast.IntegerNode, scope: Scope):
-        pass
+        return IntType()
 
     @visitor.when(ast.StringNode)
     def visit(self, node: ast.StringNode, scope: Scope):
-        pass
+        return StringType()
 
     @visitor.when(ast.BooleanNode)
     def visit(self, node: ast.BooleanNode, scope: Scope):
-        pass
+        return BoolType()
 
     @visitor.when(ast.VariableNode)
     def visit(self, node: ast.VariableNode, scope: Scope):
-        pass
+        var = scope.find_variable(node.lex)
+        if var is None:
+            self.errors.append(VARIABLE_NOT_DEFINED % (node.lex, self.current_method.name))
+            return ErrorType()
+        return var.type
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):
-        pass
+        try:
+            return self.context.get_type(node.lex)
+        except SemanticError as e:
+            self.errors.append(e.text)
+            return ErrorType()
 
     @visitor.when(ast.NegationNode)
     def visit(self, node: ast.NegationNode, scope: Scope):
-        pass
+        return self._check_unary_operation(node, scope, 'not', BoolType())
 
     @visitor.when(ast.ComplementNode)
     def visit(self, node: ast.ComplementNode, scope: Scope):
-        pass
+        return self._check_unary_operation(node, scope, '~', IntType())
 
     @visitor.when(ast.IsVoidNode)
     def visit(self, node: ast.IsVoidNode, scope: Scope):
-        pass
+        self.visit(node.obj, scope)
+        return BoolType()
 
     @visitor.when(ast.PlusNode)
     def visit(self, node: ast.PlusNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '+', IntType())
 
     @visitor.when(ast.MinusNode)
     def visit(self, node: ast.MinusNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '-', IntType())
 
     @visitor.when(ast.StarNode)
     def visit(self, node: ast.StarNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '*', IntType())
 
     @visitor.when(ast.DivNode)
     def visit(self, node: ast.DivNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '/', IntType())
 
     @visitor.when(ast.LessEqualNode)
     def visit(self, node: ast.LessEqualNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '<=', BoolType())
 
     @visitor.when(ast.LessThanNode)
     def visit(self, node: ast.LessThanNode, scope: Scope):
-        pass
+        return self._check_int_binary_operation(node, scope, '<', BoolType())
 
     @visitor.when(ast.EqualNode)
     def visit(self, node: ast.EqualNode, scope: Scope):
-        pass
+        self.visit(node.left, scope)
+        self.visit(node.right, scope)
+        return BoolType()
+
+    def _check_int_binary_operation(self, node: ast.BinaryNode, scope: Scope, operation: str, return_type: Type):
+        left_type = self.visit(node.left, scope)
+        right_type = self.visit(node.right, scope)
+
+        if left_type == right_type == IntType():
+            return return_type
+        self.errors.append(INVALID_BINARY_OPERATION % (operation, left_type.name, right_type.name))
+        return ErrorType()
+
+    def _check_unary_operation(self, node: ast.UnaryNode, scope: Scope, operation: str, expected_type: Type):
+        typex = self.visit(node.obj, scope)
+        if typex == expected_type:
+            return typex
+        self.errors.append(INVALID_UNARY_OPERATION % (operation, typex.name))
+        return ErrorType()
 
 
 class InferenceTypeChecker:

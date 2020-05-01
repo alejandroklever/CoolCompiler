@@ -79,6 +79,12 @@ class AssignNode(ExprNode):
         self.expr: ExprNode = expr
 
 
+class SetAttributeNode(ExprNode):
+    def __init__(self, idx, expr):
+        self.id: str = idx
+        self.expr: ExprNode = expr
+
+
 class ConditionalNode(ExprNode):
     def __init__(self, ifx, then, elsex):
         self.if_expr: ExprNode = ifx
@@ -114,6 +120,10 @@ class BinaryNode(ExprNode):
     def __init__(self, left, right):
         self.left: ExprNode = left
         self.right: ExprNode = right
+
+
+class GetAttributeNode(AtomicNode):
+    pass
 
 
 class VariableNode(AtomicNode):

@@ -1,7 +1,7 @@
 from lexer import CoolLexer
 from parser import CoolParser
 from scope import Context
-from semantic import TypeCollector, TypeBuilder, TypeChecker, InferenceTypeChecker, Executor
+from semantic import TypeCollector, TypeBuilder, TypeChecker, InferenceTypeChecker, Executor, topological_order
 
 program = r"""
 class Main inherits IO {
@@ -22,9 +22,15 @@ if __name__ == '__main__':
     errors = []
 
     TypeCollector(context, errors).visit(ast)
+
     TypeBuilder(context, errors).visit(ast)
+
+    topological_order(ast, context)
+
     scope = TypeChecker(context, errors).visit(ast)
+
     InferenceTypeChecker(context, errors).visit(ast, scope)
+
     Executor(context, errors).visit(ast, scope)
 
     for error in errors:

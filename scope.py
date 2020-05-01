@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 
 class SemanticError(Exception):
@@ -70,6 +70,9 @@ class Type:
         else:
             raise SemanticError(f'Attribute "{name}" is already defined in {self.name}.')
 
+    def contains_attribute(self, name: str) -> bool:
+        return name in self.attributes
+
     def get_method(self, name: str) -> Method:
         try:
             return self.methods[name]
@@ -92,17 +95,18 @@ class Type:
         self.methods[name] = method
         return method
 
-    def all_attributes(self, clean: bool = True):
-        plain = OrderedDict() if self.parent is None else self.parent.all_attributes(False)
-        for attr in self.attributes.values():
-            plain[attr.name] = (attr, self)
-        return plain.values() if clean else plain
+    def contains_method(self, name) -> bool:
+        return name in self.methods
 
-    def all_methods(self, clean: bool = True):
-        plain = OrderedDict() if self.parent is None else self.parent.all_methods(False)
-        for method in self.methods.values():
-            plain[method.name] = (method, self)
-        return plain.values() if clean else plain
+    def all_attributes(self) -> List[Tuple[Attribute, 'Type']]:
+        attributes = [] if self.parent is None else self.parent.all_attributes()
+        attributes += [(a, self) for a in self.attributes.values()]
+        return attributes
+
+    def all_methods(self) -> List[Tuple[Method, 'Type']]:
+        methods = [] if self.parent is None else self.parent.all_methods()
+        methods += [(m, self) for m in self.methods.values()]
+        return methods
 
     def conforms_to(self, other: 'Type') -> bool:
         return other.bypass() or self == other or self.parent is not None and self.parent.conforms_to(other)
