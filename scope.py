@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Union
 
 
 class SemanticError(Exception):
@@ -71,16 +71,29 @@ class Type:
             raise SemanticError(f'Attribute "{name}" is already defined in {self.name}.')
 
     def contains_attribute(self, name: str) -> bool:
-        return name in self.attributes
+        return name in self.attributes or (self.parent is not None and self.parent.contains_attribute(name))
 
-    def get_method(self, name: str) -> Method:
+    def get_method(self, name: str, get_owner: bool = False) -> Union[Method, Tuple[Method, 'Type']]:
+        """
+        Search the innermost declaration of the method with the given name and return the method, if "get_owner" has
+        value "True" the returned object is a tuple (method, type) where type is the innermost `Type` in th Type
+        Hierarchy where the methods is defined. If the method does not exist in the hierarchy then a SemanticError is
+        raised
+
+        :param name: str, name of the method
+
+        :param get_owner: bool, if has value "True" then a tuple (method, type) is returned else only the method is
+        returned
+
+        :return: the desired method and it's optional type owner.
+        """
         try:
-            return self.methods[name]
+            return self.methods[name] if not get_owner else (self.methods[name], self)
         except StopIteration:
             if self.parent is None:
                 raise SemanticError(f'Method "{name}" is not defined in {self.name}.')
             try:
-                return self.parent.get_method(name)
+                return self.parent.get_method(name, get_owner)
             except SemanticError:
                 raise SemanticError(f'Method "{name}" is not defined in {self.name}.')
 
@@ -96,7 +109,7 @@ class Type:
         return method
 
     def contains_method(self, name) -> bool:
-        return name in self.methods
+        return name in self.methods or (self.parent is not None and self.parent.contains_method(name))
 
     def all_attributes(self) -> List[Tuple[Attribute, 'Type']]:
         attributes = [] if self.parent is None else self.parent.all_attributes()

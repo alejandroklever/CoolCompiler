@@ -27,7 +27,7 @@ class MethodDeclarationNode(DeclarationNode):
     def __init__(self, idx, params, return_type, body):
         self.id: str = idx
         self.params: List[Tuple[str, str]] = params
-        self.type: str = return_type
+        self.return_type: str = return_type
         self.body: ExprNode = body
 
 
@@ -112,8 +112,8 @@ class AtomicNode(ExprNode):
 
 
 class UnaryNode(ExprNode):
-    def __init__(self, obj):
-        self.obj: ExprNode = obj
+    def __init__(self, expr):
+        self.expr: ExprNode = expr
 
 
 class BinaryNode(ExprNode):

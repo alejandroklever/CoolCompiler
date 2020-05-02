@@ -54,7 +54,7 @@ def when(param_type):
 class Dispatcher(object):
     def __init__(self, param_name, fn):
         frame = inspect.currentframe().f_back.f_back
-        top_level = frame.f_locals == frame.f_globals
+        self.top_level = frame.f_locals == frame.f_globals
         self.param_index = self.__argspec(fn).args.index(param_name)
         self.param_name = param_name
         self.targets = {}
@@ -65,10 +65,9 @@ class Dispatcher(object):
         if d is not None:
             return d(*args, **kw)
         else:
-            issub = issubclass
             t = self.targets
             ks = t.keys()
-            ans = [t[k](*args, **kw) for k in ks if issub(typ, k)]
+            ans = [t[k](*args, **kw) for k in ks if issubclass(typ, k)]
             if len(ans) == 1:
                 return ans.pop()
             return ans

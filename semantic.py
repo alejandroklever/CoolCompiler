@@ -26,7 +26,7 @@ Int (Sealed)
 Bool (Sealed)
     default -> False
 
-String
+String (Sealed)
     length() : Int
     concat(s : String) : String
     substr(i : Int, l : Int) : String
@@ -34,54 +34,15 @@ String
 
 WRONG_SIGNATURE = 'Method "%s" already defined in "%s" with a different signature.'
 SELF_IS_READONLY = 'Variable "self" is read-only.'
+SELF_INVALID_ATTRIBUTE_ID = 'Cannot set "self" as attribute of a class.'
+SELF_INVALID_PARAM_ID = 'Cannot set "self" as parameter of a method.'
+INVALID_INHERIT_CLASS = 'Can not inherits from "Int", "String", "Bool".'
+OVERRIDE_ATTRIBUTE_ID = 'Attributes cannot be override in derived class'
 LOCAL_ALREADY_DEFINED = 'Variable "%s" is already defined in method "%s".'
 INCOMPATIBLE_TYPES = 'Cannot convert "%s" into "%s".'
 VARIABLE_NOT_DEFINED = 'Variable "%s" is not defined in "%s".'
 INVALID_BINARY_OPERATION = 'Operation "%s" is not defined between "%s" and "%s".'
 INVALID_UNARY_OPERATION = 'Operation "%s" is not defined for "%s".'
-
-
-def topological_order(program_node: ast.ProgramNode, context: Context):
-    """
-    Set an order in the program node of de ast such that for all class A with parent B, class B is before A in the
-    list, if in the process is detected a cycle, or exist a class derived from "Int", "String" or "Bool" then an
-    assertion error is throw.
-
-    :param program_node: Root of the first AST of the program
-
-    :param context: Context With all collected and building types
-
-    :return: a List[str] "l" where l[i] contains the name of the Type number i in the topological order
-    """
-    types = context.types
-
-    graph: Dict[str, List[str]] = {name: [] for name in types}
-
-    for name, typex in types.items():
-        if name == 'Object':
-            continue
-        graph[typex.parent.name].append(name)
-
-    assert graph['Int'] == graph['String'] == graph['Bool'] == [], 'Can not inherits from "Int", "String", "Bool".'
-
-    order = []
-    visited = {name: False for name in graph}
-    stack = ['Object']
-
-    while stack:
-        current_name = stack.pop()
-
-        assert not visited[current_name], f'Cyclic class hierarchy in class {current_name}.'
-
-        visited[current_name] = True
-        stack += graph[current_name]
-        order.append(current_name)
-
-    declarations = {d.id: d for d in program_node.declarations}
-    program_node.declarations = [declarations[name] for name in order if
-                                 name not in ('Object', 'Int', 'IO', 'String', 'Bool')]
-
-    return order
 
 
 class Formatter:
@@ -110,7 +71,7 @@ class Formatter:
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode, tabs: int = 0):
         params = ', '.join(':'.join(param) for param in node.params)
-        ans = '\t' * tabs + f'\\__FuncDeclarationNode: {node.id}({params}) : {node.type} -> <body>'
+        ans = '\t' * tabs + f'\\__FuncDeclarationNode: {node.id}({params}) : {node.return_type} -> <body>'
         body = self.visit(node.body, tabs + 1)
         return f'{ans}\n{body}'
 
@@ -233,18 +194,18 @@ class TypeCollector:
         int_type.set_parent(object_type)
         bool_type.set_parent(object_type)
 
-        object_type.define_method('abort', [], [], object_type)
-        object_type.define_method('get_type', [], [], string_type)
-        object_type.define_method('copy', [], [], self_type)
+        object_type.define_method('abort', ['self'], [self_type], object_type)
+        object_type.define_method('get_type', ['self'], [self_type], string_type)
+        object_type.define_method('copy', ['self'], [self_type], self_type)
 
-        io_type.define_method('out_string', ['x'], [string_type], self_type)
-        io_type.define_method('out_int', ['x'], [int_type], self_type)
-        io_type.define_method('in_string', [], [], string_type)
-        io_type.define_method('in_int', [], [], int_type)
+        io_type.define_method('out_string', ['self', 'x'], [self_type, string_type], self_type)
+        io_type.define_method('out_int', ['self', 'x'], [self_type, string_type], self_type)
+        io_type.define_method('in_string', ['self'], [self_type], string_type)
+        io_type.define_method('in_int', ['self'], [self_type], int_type)
 
-        string_type.define_method('length', [], [], int_type)
-        string_type.define_method('concat', ['s'], [string_type], string_type)
-        string_type.define_method('substr', ['i', 'l'], [int_type, int_type], string_type)
+        string_type.define_method('length', ['self'], [self_type], int_type)
+        string_type.define_method('concat', ['self', 's'], [self_type, string_type], string_type)
+        string_type.define_method('substr', ['self', 'i', 'l'], [self_type, int_type, int_type], string_type)
 
         for declaration in node.declarations:
             self.visit(declaration)
@@ -258,7 +219,15 @@ class TypeCollector:
 
 
 class TypeBuilder:
-    def __init__(self, context: Context, errors: List[str] = []):
+    """This visitor collect all the attributes and methods in classes and set the parent to the current class
+
+    Params
+    ------
+    - errors: List[str] is a list of errors detected in the ast travel
+    - context: Context the context for keeping the classes
+    - current_type: Optional[Type] is the current type in the building process"""
+
+    def __init__(self, context: Context, errors: List[str]):
         self.context: Context = context
         self.current_type: Optional[Type] = None
         self.errors: List[str] = errors
@@ -277,6 +246,9 @@ class TypeBuilder:
         self.current_type = self.context.get_type(node.id)
 
         if node.parent is not None:
+            if node.parent in ("Int", "String", "Bool", "SELF_TYPE"):
+                self.errors.append('Can not inherits from "Int", "String" or "Bool".')
+
             try:
                 self.current_type.set_parent(node.parent)
             except SemanticError as e:
@@ -299,8 +271,8 @@ class TypeBuilder:
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
         name = node.id
-        param_names = []
-        param_types = []
+        param_names = ['self']
+        param_types = [SelfType()]
         for name, typex in node.params:
             param_names.append(name)
             try:
@@ -310,7 +282,7 @@ class TypeBuilder:
                 self.errors.append(e.text)
 
         try:
-            return_type = self.context.get_type(node.type)
+            return_type = self.context.get_type(node.return_type)
         except SemanticError as e:
             return_type = ErrorType()
             self.errors.append(e.text)
@@ -318,16 +290,234 @@ class TypeBuilder:
         self.current_type.define_method(name, param_names, param_types, return_type)
 
 
-class SetterGetterCreator:
-    def __init__(self, context: Context, errors: List[str] = []):
+def topological_ordering(program_node: ast.ProgramNode,
+                         context: Context,
+                         errors: List[str]) -> ast.ProgramNode:
+    """Set an order in the program node of de ast such that for all class A with parent B, class B is before A in the
+    list, if in the process is detected a cycle an error is added to the `error` parameter
+
+    :param program_node: Root of the first AST of the program
+
+    :param context: Context With all collected and building types
+
+    :param errors: The error list
+
+    :return: a new AST where all declared class are in topological order"""
+
+    types = context.types
+
+    graph: Dict[str, List[str]] = {name: [] for name in types}
+
+    for name, typex in types.items():
+        if name == 'Object':
+            continue
+        graph[typex.parent.name].append(name)
+
+    order = []
+    visited = {name: False for name in graph}
+    stack = ['Object']
+
+    while stack:
+        current_name = stack.pop()
+
+        if visited[current_name]:
+            errors.append(f'Cyclic class hierarchy in class {current_name}.')
+
+        visited[current_name] = True
+        stack += graph[current_name]
+        order.append(current_name)
+
+    declarations = {d.id: d for d in program_node.declarations}
+    program_node.declarations = [declarations[name] for name in order if
+                                 name not in ('Object', 'Int', 'IO', 'String', 'Bool')]
+
+    return program_node
+
+
+class OverriddenMethodChecker:
+    """This visitor for validate the signature of the overridden methods
+
+        Params
+        ------
+        - errors: List[str] is a list of errors detected in the ast travel
+        - context: Context the context for keeping the classes
+        - current_type: Optional[Type] is the current type in the building process"""
+
+    def __init__(self, context: Context, errors: List[str]):
+        self.context: Context = context
+        self.current_type: Optional[Type] = None
+        self.errors: List[str] = errors
+
+    @visitor.on('node')
+    def visit(self, node):
+        pass
+
+    @visitor.when(ast.ProgramNode)
+    def visit(self, node: ast.ProgramNode):
+        for declaration in node.declarations:
+            self.visit(declaration)
+
+    @visitor.when(ast.ClassDeclarationNode)
+    def visit(self, node: ast.ClassDeclarationNode):
+        self.current_type = self.context.get_type(node.id)
+
+        for feature in node.features:
+            if isinstance(feature, ast.MethodDeclarationNode):
+                self.visit(feature)
+
+    @visitor.when(ast.MethodDeclarationNode)
+    def visit(self, node: ast.MethodDeclarationNode):
+        # At this point all class has defined a parent and they are visited in topological order
+        method, owner = self.current_type.parent.get_method(node.id, get_owner=True)
+
+        if len(method.param_types) != len(node.params):
+            self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
+
+        for parent_param_type, (_, current_param_type_name) in zip(method.param_types, node.params):
+            if parent_param_type != self.context.get_type(current_param_type_name):
+                self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
+                break
+
+        if method.return_type != self.context.get_type(node.return_type):
+            self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
+
+
+class SelfTypeReplacement:
+    """Check that `SELF_TYPE` is used correctly and replace every match with the correspondent class type.
+
+        The principal method visit return a new AST with all the SELF_TYPE replaced by it's correspondent class name,
+        all the definitions of SELF_TYPE in the Type definition where be overridden.
+        Params
+        ------
+        - errors: List[str] is a list of errors detected in the ast travel
+        - context: Context the context for keeping the classes
+        - current_type: Optional[Type] is the current type in the building process"""
+
+    def __init__(self, context: Context, errors: List[str]):
         self.context: Context = context
         self.errors: List[str] = errors
-        self.current_type: Type = None
-        self.current_method: Method = None
+        self.current_type: Optional[Type] = None
+        self.current_method: Optional[Method] = None
+
+    @visitor.on('node')
+    def visit(self, node):
+        pass
+
+    @visitor.when(ast.ProgramNode)
+    def visit(self, node: ast.ProgramNode):
+        return ast.ProgramNode([self.visit(declaration) for declaration in node.declarations])
+
+    @visitor.when(ast.ClassDeclarationNode)
+    def visit(self, node: ast.ClassDeclarationNode):
+        self.current_type = self.context.get_type(node.id)
+
+        if node.parent is not None and node.parent == 'SELF_TYPE':
+            self.errors.append(f'Invalid use of "SELF_TYPE" as parent of class "{node.id}"')
+
+        features = [self.visit(feature) for feature in node.features]
+
+        return ast.ClassDeclarationNode(node.id, features, node.parent)
+
+    @visitor.when(ast.AttrDeclarationNode)
+    def visit(self, node: ast.AttrDeclarationNode):
+        typex = node.type
+        if typex == 'SELF_TYPE':
+            typex = self.current_type.name
+            self.current_type.get_attribute(node.id).type = self.current_type
+
+        expr = self.visit(node.expr) if node.expr is not None else None
+
+        return ast.AttrDeclarationNode(node.id, typex, expr)
+
+    @visitor.when(ast.MethodDeclarationNode)
+    def visit(self, node: ast.MethodDeclarationNode):
+        self.current_method = self.current_type.get_method(node.id)
+
+        self.current_method.param_types[0] = self.current_type
+
+        for i, (_, param_type) in enumerate(node.params, 1):
+            if param_type == 'SELF_TYPE':
+                self.errors.append('The static type of a param cannot be "SELF_TYPE"')
+                self.current_method.param_types[i] = ErrorType()  # Change the static type to "ErrorType"
+
+        if node.return_type == 'SELF_TYPE':
+            self.current_method.return_type = self.current_type
+
+        expr = self.visit(node.body)
+
+        return ast.MethodDeclarationNode(node.id, node.params, self.current_method.return_type.name, expr)
+
+    @visitor.when(ast.LetNode)
+    def visit(self, node: ast.LetNode):
+        return ast.LetNode([self.visit(declaration) for declaration in node.declarations], self.visit(node.expr))
+
+    @visitor.when(ast.VarDeclarationNode)
+    def visit(self, node: ast.VarDeclarationNode):
+        # TODO
+        pass
+
+    @visitor.when(ast.AssignNode)
+    def visit(self, node: ast.AssignNode):
+        return ast.AssignNode(node.id, self.visit(node.expr))
+
+    @visitor.when(ast.BlockNode)
+    def visit(self, node: ast.BlockNode):
+        return ast.BlockNode([self.visit(expr) for expr in node.expressions])
+
+    @visitor.when(ast.ConditionalNode)
+    def visit(self, node: ast.ConditionalNode):
+        return ast.ConditionalNode(self.visit(node.if_expr), self.visit(node.then_expr), self.visit(node.else_expr))
+
+    @visitor.when(ast.WhileNode)
+    def visit(self, node: ast.WhileNode):
+        return ast.WhileNode(self.visit(node.condition), self.visit(node.body))
+
+    @visitor.when(ast.SwitchCaseNode)
+    def visit(self, node: ast.SwitchCaseNode):
+        # TODO
+        pass
+
+    @visitor.when(ast.CaseNode)
+    def visit(self, node: ast.CaseNode):
+        # TODO
+        pass
+
+    @visitor.when(ast.MethodCallNode)
+    def visit(self, node: ast.MethodCallNode):
+        # TODO
+        pass
+
+    @visitor.when(ast.IntegerNode)
+    def visit(self, node: ast.IntegerNode):
+        return node
+
+    @visitor.when(ast.StringNode)
+    def visit(self, node: ast.StringNode):
+        return node
+
+    @visitor.when(ast.BooleanNode)
+    def visit(self, node: ast.BooleanNode):
+        return node
+
+    @visitor.when(ast.VariableNode)
+    def visit(self, node: ast.VariableNode):
+        return node
+
+    @visitor.when(ast.InstantiateNode)
+    def visit(self, node: ast.InstantiateNode):
+        return node
+
+    @visitor.when(ast.UnaryNode)
+    def visit(self, node: ast.UnaryNode):
+        return type(node)(self.visit(node.expr))
+
+    @visitor.when(ast.BinaryNode)
+    def visit(self, node: ast.BinaryNode):
+        return type(node)(self.visit(node.left), self.visit(node.right))
 
 
 class TypeChecker:
-    def __init__(self, context: Context, errors: List[str] = []):
+    def __init__(self, context: Context, errors: List[str]):
         self.context: Context = context
         self.errors: List[str] = errors
         self.current_type: Type = None
@@ -359,27 +549,40 @@ class TypeChecker:
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
-        expected_type = self.context.get_type(node.type)
+        if node.id == 'self':
+            self.errors.append(SELF_INVALID_ATTRIBUTE_ID)
+
+        attr_type = self.context.get_type(node.type)
+
         if node.expr is not None:
-            typex = self.visit(node.expr, scope.create_child())
-            if not typex.conforms_to(expected_type):
-                self.errors.append(INCOMPATIBLE_TYPES % (node.type, expected_type.name))
-        scope.define_variable(node.id, expected_type)
+            expr_type = self.visit(node.expr, scope.create_child())
+            if not expr_type.conforms_to(attr_type):
+                self.errors.append(INCOMPATIBLE_TYPES % (expr_type.name, attr_type.name))
+
+        scope.define_variable(node.id, attr_type)
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         self.current_method = self.current_type.get_method(node.id)
 
-        for i, (name, typex) in enumerate(node.params):
-            if scope.is_defined(name):
-                self.errors.append(LOCAL_ALREADY_DEFINED % (name, self.current_method.name))
+        # Defining parameters in the scope. Parameters can hide the attribute declaration, that's why we are not
+        # checking  if there is defined, instead we are checking for local declaration
+        for i, (name, expr_body_type) in enumerate(node.params):
+            if not scope.is_local(name):
+                scope.define_variable(name, self.context.get_type(expr_body_type))
             else:
-                scope.define_variable(name, self.context.get_type(typex))
+                self.errors.append(LOCAL_ALREADY_DEFINED % (name, self.current_method.name))
 
-        typex = self.visit(node.body, scope.create_child())
-        expected_type = self.context.get_type(node.type)
-        if not typex.conforms_to(expected_type):
-            self.errors.append(INCOMPATIBLE_TYPES % (typex.name, expected_type.name))
+        return_type = self.context.get_type(node.return_type)
+
+        # Check overriding method
+        self.current_type.get_method(node.id)
+        pass
+
+        expr_body_type = self.visit(node.body, scope)
+
+        if not expr_body_type.conforms_to(return_type):
+            self.errors.append(INCOMPATIBLE_TYPES % (expr_body_type.name, return_type.name))
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
@@ -518,7 +721,7 @@ class TypeChecker:
 
     @visitor.when(ast.IsVoidNode)
     def visit(self, node: ast.IsVoidNode, scope: Scope):
-        self.visit(node.obj, scope)
+        self.visit(node.expr, scope)
         return BoolType()
 
     @visitor.when(ast.PlusNode)
@@ -561,7 +764,7 @@ class TypeChecker:
         return ErrorType()
 
     def _check_unary_operation(self, node: ast.UnaryNode, scope: Scope, operation: str, expected_type: Type):
-        typex = self.visit(node.obj, scope)
+        typex = self.visit(node.expr, scope)
         if typex == expected_type:
             return typex
         self.errors.append(INVALID_UNARY_OPERATION % (operation, typex.name))

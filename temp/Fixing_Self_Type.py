@@ -20,7 +20,7 @@ def fix_self_type(context: Context, errors=[]):
     self_typed_attributes = {t: [] for t in types}
     for t in ts:
         for att in t.attributes:
-            if att.type == self_type:
+            if att.return_type == self_type:
                 self_typed_attributes[t].append(att)
         for func in t.methods:
             if func.return_type == self_type:
@@ -34,7 +34,7 @@ def fix_self_type(context: Context, errors=[]):
             for item in self_typed_methods[t.parent]:
                 t.define_method(item.name, item.param_names, item.param_types, item.return_type)
             for item in self_typed_attributes[t.parent]:
-                t.define_attribute(item.name, item.type)
+                t.define_attribute(item.name, item.return_type)
     # replacing self_type
     for t in ts:
         for method in t.methods:
@@ -44,8 +44,8 @@ def fix_self_type(context: Context, errors=[]):
             if method.return_type == self_type:
                 method.return_type = t
         for att in t.attributes:
-            if att.type == self_type:
-                att.type = t
+            if att.return_type == self_type:
+                att.return_type = t
 
 
 def visit(v, ts, visited):
