@@ -124,8 +124,30 @@ class Type:
     def conforms_to(self, other: 'Type') -> bool:
         return other.bypass() or self == other or self.parent is not None and self.parent.conforms_to(other)
 
+    def join(self, other: 'Type') -> 'Type':
+        self_ancestors = set(self.get_ancestors())
+
+        current_type = other
+        while current_type is not None:
+            if current_type in self_ancestors:
+                return current_type
+            current_type = current_type.parent
+        return None
+
+    @staticmethod
+    def multi_join(types: List['Type']):
+        static_type = types[0]
+        for t in types[1:]:
+            static_type = static_type.join(t)
+        return static_type
+
     def bypass(self) -> bool:
         return False
+
+    def get_ancestors(self):
+        if self.parent is None:
+            return [self]
+        return [self] + self.parent.get_ancestors()
 
     def __str__(self):
         output = f'type {self.name}'
