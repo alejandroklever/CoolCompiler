@@ -1,12 +1,12 @@
 """This module contains definitions of classes for make different travels through the AST of a cool program. All
-classes defined here follows the visitor pattern using the module cmp.visitor, with this we can get a more decoupled
+classes defined here follows the visitor pattern using the module visitor, with this we can get a more decoupled
 inspection. """
 from typing import List, Optional, Dict
 
 import astnodes as ast
 import visitor
-from scope import Context, SemanticError, Type, Scope, Method, AutoType, IntType, BoolType, StringType, ErrorType, \
-    SelfType, ObjectType, IOType
+from scope import (Context, SemanticError, Type, Scope, Method, AutoType, IntType, BoolType, StringType, ErrorType,
+                   SelfType, ObjectType, IOType)
 
 WRONG_SIGNATURE = 'Method "%s" already defined in "%s" with a different signature.'
 SELF_IS_READONLY = 'Variable "self" is read-only.'
