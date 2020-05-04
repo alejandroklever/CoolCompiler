@@ -10,9 +10,7 @@ class Main inherits IO {
         out_string("Hello, World.\n")
     };
     
-    function(): SELF_TYPE {
-        0
-    };
+    function(): SELF_TYPE { 0 };
 }
 """
 
