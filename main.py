@@ -1,13 +1,17 @@
 from lexer import CoolLexer
 from parser import CoolParser
-from scope import Context
-from semantic import (TypeCollector, TypeBuilder, OverriddenMethodChecker, SelfTypeReplacement, TypeChecker,
-                      InferenceTypeChecker, Executor, topological_ordering)
+from semantics.scope import Context
+from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, SelfTypeReplacement, TypeChecker,
+                       topological_ordering, Formatter)
 
 program = r"""
 class Main inherits IO {
     main(): IO {
         out_string("Hello, World.\n")
+    };
+    
+    function(): SELF_TYPE {
+        0
     };
 }
 """
@@ -28,8 +32,9 @@ if __name__ == '__main__':
     OverriddenMethodChecker(context, errors).visit(ast)
     ast = SelfTypeReplacement(context, errors).visit(ast)
     scope = TypeChecker(context, errors).visit(ast)
-    InferenceTypeChecker(context, errors).visit(ast, scope)
-    Executor(context, errors).visit(ast, scope)
+    print(Formatter().visit(ast))
+    # InferenceTypeChecker(context, errors).visit(ast, scope)
+    # Executor(context, errors).visit(ast, scope)
 
     for error in errors:
         print(error)

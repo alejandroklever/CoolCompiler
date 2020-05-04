@@ -6,7 +6,7 @@ import fire
 from cmp.lexing import Token
 from lexer import CoolLexer
 from parser import CoolParser
-from semantic import Formatter
+from semantics.semantic import Formatter
 
 lexer = CoolLexer()
 parser = CoolParser()

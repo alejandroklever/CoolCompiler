@@ -89,7 +89,7 @@ class Type:
         """
         try:
             return self.methods[name] if not get_owner else (self.methods[name], self)
-        except StopIteration:
+        except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Method "{name}" is not defined in {self.name}.')
             try:
