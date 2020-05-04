@@ -40,8 +40,10 @@ class Method:
 class Type:
     def __init__(self, name: str):
         self.name: str = name
-        self.attributes: Dict[str, Attribute] = {}
-        self.methods: Dict[str, Method] = {}
+        self.attributes_list: List[Attribute] = []
+        self.methods_list: List[Method] = []
+        self.attributes_dict: Dict[str, Attribute] = {}
+        self.methods_dict: Dict[str, Method] = {}
         self.parent: Optional['Type'] = None
 
     def set_parent(self, parent: 'Type') -> None:
@@ -51,7 +53,7 @@ class Type:
 
     def get_attribute(self, name: str) -> Attribute:
         try:
-            return self.attributes[name]
+            return self.attributes_dict[name]
         except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Attribute "{name}" is not defined in {self.name}.')
@@ -65,13 +67,14 @@ class Type:
             self.get_attribute(name)
         except SemanticError:
             attribute = Attribute(name, typex)
-            self.attributes[name] = attribute
+            self.attributes_list.append(attribute)
+            self.attributes_dict[name] = attribute
             return attribute
         else:
             raise SemanticError(f'Attribute "{name}" is already defined in {self.name}.')
 
     def contains_attribute(self, name: str) -> bool:
-        return name in self.attributes or (self.parent is not None and self.parent.contains_attribute(name))
+        return name in self.attributes_dict or self.parent is not None and self.parent.contains_attribute(name)
 
     def get_method(self, name: str, get_owner: bool = False) -> Union[Method, Tuple[Method, 'Type']]:
         """
@@ -88,7 +91,7 @@ class Type:
         :return: the desired method and it's optional type owner.
         """
         try:
-            return self.methods[name] if not get_owner else (self.methods[name], self)
+            return self.methods_dict[name] if not get_owner else (self.methods_dict[name], self)
         except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Method "{name}" is not defined in {self.name}.')
@@ -101,24 +104,25 @@ class Type:
                       param_names: List[str],
                       param_types: List['Type'],
                       return_type: 'Type') -> Method:
-        if name in self.methods:
+        if name in self.methods_dict:
             raise SemanticError(f'Method "{name}" already defined in {self.name}')
 
         method = Method(name, param_names, param_types, return_type)
-        self.methods[name] = method
+        self.methods_list.append(method)
+        self.methods_dict[name] = method
         return method
 
     def contains_method(self, name) -> bool:
-        return name in self.methods or (self.parent is not None and self.parent.contains_method(name))
+        return name in self.methods_dict or (self.parent is not None and self.parent.contains_method(name))
 
     def all_attributes(self) -> List[Tuple[Attribute, 'Type']]:
         attributes = [] if self.parent is None else self.parent.all_attributes()
-        attributes += [(a, self) for a in self.attributes.values()]
+        attributes += [(x, self) for x in self.attributes_list]
         return attributes
 
     def all_methods(self) -> List[Tuple[Method, 'Type']]:
         methods = [] if self.parent is None else self.parent.all_methods()
-        methods += [(m, self) for m in self.methods.values()]
+        methods += [(x, self) for x in self.methods_list]
         return methods
 
     def conforms_to(self, other: 'Type') -> bool:
@@ -154,11 +158,11 @@ class Type:
         parent = '' if self.parent is None else f' : {self.parent.name}'
         output += parent
         output += ' {'
-        output += '\n\t' if self.attributes or self.methods else ''
-        output += '\n\t'.join(str(x) for x in self.attributes)
-        output += '\n\t' if self.attributes else ''
-        output += '\n\t'.join(str(x) for x in self.methods)
-        output += '\n' if self.methods else ''
+        output += '\n\t' if self.attributes_dict or self.methods_dict else ''
+        output += '\n\t'.join(str(x) for x in self.attributes_dict)
+        output += '\n\t' if self.attributes_dict else ''
+        output += '\n\t'.join(str(x) for x in self.methods_dict)
+        output += '\n' if self.methods_dict else ''
         output += '}\n'
         return output
 
