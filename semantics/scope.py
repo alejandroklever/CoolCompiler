@@ -28,7 +28,7 @@ class Method:
         self.return_type: 'Type' = return_type
 
     def __str__(self):
-        params = ', '.join(f'{n}:{t.name}' for n, t in zip(self.param_names, self.param_types))
+        params = ', '.join(f'{n}: {t.name}' for n, t in zip(self.param_names, self.param_types))
         return f'[method] {self.name}({params}): {self.return_type.name};'
 
     def __eq__(self, other):
@@ -51,14 +51,27 @@ class Type:
             raise SemanticError(f'Parent type is already set for {self.name}.')
         self.parent = parent
 
-    def get_attribute(self, name: str) -> Attribute:
+    def get_attribute(self, name: str, get_owner: bool = False) -> Union[Attribute, Tuple[Attribute, 'Type']]:
+        """
+        Search the innermost declaration of the attribute with the given name and return it, if "get_owner" has
+        value "True" the returned object is a tuple (attribute, type) where type is the innermost `Type` in th Type
+        Hierarchy where the attribute is defined. If the method does not exist in the hierarchy then a SemanticError is
+        raised.
+
+        :param name: str, name of the attribute
+
+        :param get_owner: bool, if has value "True" then a tuple (attribute, type) is returned else only the method is
+        returned
+
+        :return: the desired attribute and it's optional type owner.
+        """
         try:
-            return self.attributes_dict[name]
+            return self.attributes_dict[name] if not get_owner else (self.attributes_dict[name], self)
         except KeyError:
             if self.parent is None:
                 raise SemanticError(f'Attribute "{name}" is not defined in {self.name}.')
             try:
-                return self.parent.get_attribute(name)
+                return self.parent.get_attribute(name, get_owner)
             except SemanticError:
                 raise SemanticError(f'Attribute "{name}" is not defined in {self.name}.')
 
@@ -78,7 +91,7 @@ class Type:
 
     def get_method(self, name: str, get_owner: bool = False) -> Union[Method, Tuple[Method, 'Type']]:
         """
-        Search the innermost declaration of the method with the given name and return the method, if "get_owner" has
+        Search the innermost declaration of the method with the given name and return it, if "get_owner" has
         value "True" the returned object is a tuple (method, type) where type is the innermost `Type` in th Type
         Hierarchy where the methods is defined. If the method does not exist in the hierarchy then a SemanticError is
         raised
@@ -134,9 +147,9 @@ class Type:
         current_type = other
         while current_type is not None:
             if current_type in self_ancestors:
-                return current_type
+                break
             current_type = current_type.parent
-        return None
+        return current_type
 
     @staticmethod
     def multi_join(types: List['Type']):
@@ -158,10 +171,10 @@ class Type:
         parent = '' if self.parent is None else f' : {self.parent.name}'
         output += parent
         output += ' {'
-        output += '\n\t' if self.attributes_dict or self.methods_dict else ''
-        output += '\n\t'.join(str(x) for x in self.attributes_dict)
+        output += '\n\t' if self.attributes_list or self.methods_list else ''
+        output += '\n\t'.join(str(x) for x in self.attributes_list)
         output += '\n\t' if self.attributes_dict else ''
-        output += '\n\t'.join(str(x) for x in self.methods_dict)
+        output += '\n\t'.join(str(x) for x in self.methods_list)
         output += '\n' if self.methods_dict else ''
         output += '}\n'
         return output
@@ -182,62 +195,6 @@ class ErrorType(Type):
 
     def __eq__(self, other):
         return isinstance(other, Type)
-
-
-class IntType(Type):
-    def __init__(self):
-        super().__init__('Int')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, IntType)
-
-
-class StringType(Type):
-    def __init__(self):
-        super().__init__('String')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, StringType)
-
-
-class ObjectType(Type):
-    def __init__(self):
-        super().__init__('Object')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, ObjectType)
-
-
-class IOType(Type):
-    def __init__(self):
-        super().__init__('IO')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, IOType)
-
-
-class BoolType(Type):
-    def __init__(self):
-        super().__init__('Bool')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, BoolType)
-
-
-class SelfType(Type):
-    def __init__(self):
-        super().__init__('SELF_TYPE')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, SelfType)
-
-
-class AutoType(Type):
-    def __init__(self):
-        super(AutoType, self).__init__('AUTO_TYPE')
-
-    def __eq__(self, other):
-        return other.name == self.name or isinstance(other, AutoType)
 
 
 class Context:

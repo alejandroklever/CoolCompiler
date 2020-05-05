@@ -31,6 +31,9 @@ class TypeChecker:
     def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         self.current_type = self.context.get_type(node.id)
 
+        if node.parent is not None and node.parent == 'SELF_TYPE':
+            self.errors.append(err.INVALID_PARENT_TYPE % (node.id, node.parent))
+
         attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
         methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
 
@@ -45,7 +48,7 @@ class TypeChecker:
         if node.id == 'self':
             self.errors.append(err.SELF_INVALID_ATTRIBUTE_ID)
 
-        attr_type = self.context.get_type(node.type)
+        attr_type = self.context.get_type(node.type) if node.type != 'SELF_TYPE' else self.current_type
 
         if node.expr is not None:
             expr_type = self.visit(node.expr, scope.create_child())
@@ -58,20 +61,25 @@ class TypeChecker:
     def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         self.current_method = self.current_type.get_method(node.id)
 
-        # Defining parameters in the scope. Parameters can hide the attribute declaration, that's why we are not
-        # checking  if there is defined, instead we are checking for local declaration
-        for i, (name, expr_body_type) in enumerate(node.params):
-            if not scope.is_local(name):
-                scope.define_variable(name, self.context.get_type(expr_body_type))
+        # Parameters can hide the attribute declaration, that's why we are not checking if there is defined,
+        # instead we are checking for local declaration. Also it is checked that the static type of a parameter is
+        # different of SELF_TYPE.
+        for (param_name, param_type) in zip(self.current_method.param_names, self.current_method.param_types):
+            if not scope.is_local(param_name):
+                if param_type.name == 'SELF_TYPE':
+                    self.errors.append(err.INVALID_PARAM_TYPE % 'SELF_TYPE')
+                    scope.define_variable(param_name, ErrorType())
+                else:
+                    scope.define_variable(param_name, self.context.get_type(param_type.name))
             else:
-                self.errors.append(err.LOCAL_ALREADY_DEFINED % (name, self.current_method.name))
+                self.errors.append(err.LOCAL_ALREADY_DEFINED % (param_name, self.current_method.name))
 
-        return_type = self.context.get_type(node.return_type)
+        return_type = self.context.get_type(node.return_type) if node.return_type != 'SELF_TYPE' else self.current_type
 
-        expr_body_type = self.visit(node.body, scope)
+        expr_type = self.visit(node.body, scope)
 
-        if not expr_body_type.conforms_to(return_type):
-            self.errors.append(err.INCOMPATIBLE_TYPES % (expr_body_type.name, return_type.name))
+        if not expr_type.conforms_to(return_type):
+            self.errors.append(err.INCOMPATIBLE_TYPES % (expr_type.name, return_type.name))
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
@@ -82,7 +90,7 @@ class TypeChecker:
     @visitor.when(ast.VarDeclarationNode)
     def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         try:
-            var_static_type = self.context.get_type(node.type)
+            var_static_type = self.context.get_type(node.type) if node.type != 'SELF_TYPE' else self.current_type
         except SemanticError as e:
             var_static_type = ErrorType()
             self.errors.append(e.text)
@@ -92,10 +100,9 @@ class TypeChecker:
         else:
             scope.define_variable(node.id, var_static_type)
 
-        if node.expr is not None:
-            expr_type = self.visit(node.expr, scope)
-            if not (expr_type.conforms_to(var_static_type)):
-                self.errors.append(err.INCOMPATIBLE_TYPES % (expr_type.name, var_static_type.name))
+        expr_type = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
+        if expr_type is not None and not expr_type.conforms_to(var_static_type):
+            self.errors.append(err.INCOMPATIBLE_TYPES % (expr_type.name, var_static_type.name))
 
         return var_static_type
 
@@ -144,7 +151,10 @@ class TypeChecker:
     @visitor.when(ast.CaseNode)
     def visit(self, node: ast.CaseNode, scope: Scope):
         try:
-            scope.define_variable(node.id, self.context.get_type(node.type))
+            if node.type != 'SELF_TYPE':
+                scope.define_variable(node.id, self.context.get_type(node.type))
+            else:
+                self.errors.append(err.INVALID_CASE_TYPE % node.type)
         except SemanticError as e:
             scope.define_variable(node.id, ErrorType())
             self.errors.append(e.text)
@@ -153,6 +163,8 @@ class TypeChecker:
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
+        if node.obj is None:
+            node.obj = ast.VariableNode('self')
         obj_type = self.visit(node.obj, scope)
 
         if node.type is not None:
@@ -176,7 +188,7 @@ class TypeChecker:
             return ErrorType()
 
         if len(node.args) + 1 != len(method.param_names):
-            self.errors.append(err.WRONG_SIGNATURE % (method.name, obj_type.name))
+            self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, obj_type.name))
 
         if not obj_type.conforms_to(method.param_types[0]):
             self.errors.append(err.INCOMPATIBLE_TYPES % (obj_type.name, method.param_types[0].name))
@@ -186,7 +198,7 @@ class TypeChecker:
             if not arg_type.conforms_to(method.param_types[i]):
                 self.errors.append(err.INCOMPATIBLE_TYPES % (arg_type.name, method.param_types[i].name))
 
-        return method.return_type
+        return method.return_type if method.return_type.name != 'SELF_TYPE' else ancestor_type
 
     @visitor.when(ast.IntegerNode)
     def visit(self, node: ast.IntegerNode, scope: Scope):
@@ -211,7 +223,7 @@ class TypeChecker:
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):
         try:
-            return self.context.get_type(node.lex)
+            return self.context.get_type(node.lex) if node.lex != 'SELF_TYPE' else self.current_type
         except SemanticError as e:
             self.errors.append(e.text)
             return ErrorType()

@@ -36,18 +36,18 @@ class TypeCollector:
         int_type.set_parent(object_type)
         bool_type.set_parent(object_type)
 
-        object_type.define_method('abort', ['self'], [self_type], object_type)
-        object_type.define_method('get_type', ['self'], [self_type], string_type)
-        object_type.define_method('copy', ['self'], [self_type], self_type)
+        object_type.define_method('abort', ['self'], [object_type], object_type)
+        object_type.define_method('get_type', ['self'], [object_type], string_type)
+        object_type.define_method('copy', ['self'], [object_type], self_type)
 
-        io_type.define_method('out_string', ['self', 'x'], [self_type, string_type], self_type)
-        io_type.define_method('out_int', ['self', 'x'], [self_type, string_type], self_type)
-        io_type.define_method('in_string', ['self'], [self_type], string_type)
-        io_type.define_method('in_int', ['self'], [self_type], int_type)
+        io_type.define_method('out_string', ['self', 'x'], [io_type, string_type], self_type)
+        io_type.define_method('out_int', ['self', 'x'], [io_type, string_type], self_type)
+        io_type.define_method('in_string', ['self'], [io_type], string_type)
+        io_type.define_method('in_int', ['self'], [io_type], int_type)
 
-        string_type.define_method('length', ['self'], [self_type], int_type)
-        string_type.define_method('concat', ['self', 's'], [self_type, string_type], string_type)
-        string_type.define_method('substr', ['self', 'i', 'l'], [self_type, int_type, int_type], string_type)
+        string_type.define_method('length', ['self'], [string_type], int_type)
+        string_type.define_method('concat', ['self', 's'], [string_type, string_type], string_type)
+        string_type.define_method('substr', ['self', 'i', 'l'], [string_type, int_type, int_type], string_type)
 
         for declaration in node.declarations:
             self.visit(declaration)

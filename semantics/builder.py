@@ -49,21 +49,19 @@ class TypeBuilder:
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode):
         try:
-            name = node.id
-            typex = self.context.get_type(node.type)
-            self.current_type.define_attribute(name, typex)
+            self.current_type.define_attribute(node.id, self.context.get_type(node.type))
         except SemanticError as e:
             self.errors.append(e.text)
+            self.current_type.define_attribute(node.id, ErrorType())
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
-        name = node.id
         param_names = ['self']
         param_types = [self.current_type]
         for name, typex in node.params:
             param_names.append(name)
             try:
-                param_types.append(self.context.get_type(name))
+                param_types.append(self.context.get_type(typex))
             except SemanticError as e:
                 param_types.append(ErrorType())
                 self.errors.append(e.text)
@@ -74,4 +72,4 @@ class TypeBuilder:
             return_type = ErrorType()
             self.errors.append(e.text)
 
-        self.current_type.define_method(name, param_names, param_types, return_type)
+        self.current_type.define_method(node.id, param_names, param_types, return_type)

@@ -1,8 +1,9 @@
 from typing import List, Dict, Optional
 
 import semantics.astnodes as ast
+import semantics.semantic_errors as err
 import semantics.visitor as visitor
-from semantics.scope import Context, Type
+from semantics.scope import Context, Type, SemanticError
 
 
 def topological_ordering(program_node: ast.ProgramNode,
@@ -80,22 +81,28 @@ class OverriddenMethodChecker:
             if isinstance(feature, ast.MethodDeclarationNode):
                 self.visit(feature)
 
+    @visitor.when(ast.AttrDeclarationNode)
+    def visit(self, node: ast.AttrDeclarationNode):
+        try:
+            attribute, owner = self.current_type.parent.get_attribute(node.id)
+            self.errors.append(err.ATTRIBUTE_OVERRIDE_ERROR % (attribute.name, owner.name))
+        except SemanticError:
+            pass
+
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
-        # At this point all class has defined a parent and they are visited in topological order
+        try:
+            method, owner = self.current_type.parent.get_method(node.id, get_owner=True)
 
-        method, owner = self.current_type.get_method(node.id, get_owner=True)
+            if len(method.param_types) != len(node.params) + 1:
+                self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
 
-        if owner == self.current_type:
-            return
+            for parent_param_type, (_, current_param_type_name) in zip(method.param_types[1:], node.params):
+                if parent_param_type != self.context.get_type(current_param_type_name):
+                    self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
+                    break
 
-        if len(method.param_types) != len(node.params) + 1:
-            self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
-
-        for parent_param_type, (_, current_param_type_name) in zip(method.param_types[1:], node.params):
-            if parent_param_type != self.context.get_type(current_param_type_name):
-                self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
-                break
-
-        if method.return_type != self.context.get_type(node.return_type):
-            self.errors.append(WRONG_SIGNATURE % (method.name, owner.name))
+            if method.return_type != self.context.get_type(node.return_type):
+                self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
+        except SemanticError:
+            pass

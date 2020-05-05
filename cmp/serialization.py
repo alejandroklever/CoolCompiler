@@ -82,23 +82,28 @@ class LRParserSerializer:
 class LexerSerializer:
     @staticmethod
     def build(grammar, lexer_class_name, grammar_module_name, grammar_variable_name):
-        items = grammar.terminal_rules.items()
-        values = grammar.terminal_rules.values()
+        f1 = filter(lambda x: x[1][2] is not None, grammar.terminal_rules.items())
+        f2 = filter(lambda x: x[1][2] is None and not x[1][1], grammar.terminal_rules.items())
+        f3 = filter(lambda x: x[1][2] is None and x[1][1], grammar.terminal_rules.items())
+
+        ruled_tokens = list(f1)
+        not_literal_tokens = sorted(f2, key=lambda x: len(x[1][0]), reverse=True)
+        literal_tokens = sorted(f3, key=lambda x: len(x[1][0]), reverse=True)
 
         pattern = re.compile('|'.join(
-            ['(?P<%s>%s)' % (name, regex) for name, (regex, _, rule) in items if rule is not None] +
-            sorted(['(%s)' % regex for regex, literal, _ in values if literal], key=lambda x: len(x), reverse=True) +
-            ['(?P<%s>%s)' % (name, regex) for name, (regex, literal, rule) in items if not literal and rule is None]
+            ['(?P<%s>%s)' % (name, regex) for name, (regex, _, _) in ruled_tokens] +
+            ['(?P<%s>%s)' % (name, regex) for name, (regex, _, _) in not_literal_tokens] +
+            ['(%s)' % regex for _, (regex, _, _) in literal_tokens]
         )).pattern
 
         token_rules = f"{{key: rule for key, (_, _, rule) in {grammar_variable_name}.terminal_rules.items() if rule " \
-            f"is not None}}"
+                      f"is not None}}"
 
-        error_handler = f"{grammar_variable_name}.lexical_error_handler if "\
+        error_handler = f"{grammar_variable_name}.lexical_error_handler if " \
                         f"{grammar_variable_name}.lexical_error_handler is not None else self.error "
 
         call_return = f"[Token(t.lex, {grammar_variable_name}[t.token_type], t.line, t.column) for t in " \
-            f"self.tokenize(text)] "
+                      f"self.tokenize(text)] "
 
         content = LEXER_TEMPLATE % (
             grammar_module_name, grammar_variable_name, lexer_class_name, pattern, token_rules, error_handler,

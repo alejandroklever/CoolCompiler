@@ -29,19 +29,6 @@ term = G.add_non_terminal('term')
 factor = G.add_non_terminal('factor')
 atom = G.add_non_terminal('atom')
 
-###############
-# identifiers #
-###############
-G.add_terminal('id', regex=r'[a-z][a-zA-Z0-9_]*')
-G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
-
-###############
-# Basic Types #
-###############
-G.add_terminal('string', regex=r'\"[^\"]*\"')
-G.add_terminal('int', regex=r'\d+')
-G.add_terminal('char', regex=r'\'[^\']*\'')
-
 ###########
 # Symbols #
 ###########
@@ -50,12 +37,35 @@ G.add_terminals('{ } ( ) . , : ; @ <- =>')
 ############
 # Keywords #
 ############
-G.add_terminals('class inherits if then else fi while loop pool let in case of esac new isvoid true false')
+keywords = G.add_terminals(
+    'class inherits if then else fi while loop pool let in case of esac new isvoid true false not')
+keywords_names = {x.name for x in keywords}
 
 #############
-# Operators #
+# Symbols #
 #############
-G.add_terminals('+ - * / < <= = ~ not')
+G.add_terminals('+ - * / < <= = ~')
+
+
+###############
+# Identifiers #
+###############
+@G.terminal('id', r'[a-z][a-zA-Z0-9_]*')
+def id_terminal(lexer):
+    lexer.column += len(lexer.token.lex) + 1
+    lexer.position += len(lexer.token.lex)
+    lexer.token.token_type = lexer.token.lex if lexer.token.lex in keywords_names else lexer.token.token_type
+    return lexer.token
+
+
+G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
+
+###############
+# Basic Types #
+###############
+G.add_terminal('string', regex=r'\"[^\"]*\"')
+G.add_terminal('int', regex=r'\d+')
+G.add_terminal('char', regex=r'\'[^\']*\'')
 
 
 ############
