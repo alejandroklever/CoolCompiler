@@ -1,5 +1,4 @@
-from collections import OrderedDict
-from typing import List, Optional, Dict, Any, Tuple, Union
+from typing import List, Optional, Dict, Tuple, Union
 
 
 class SemanticError(Exception):
@@ -32,19 +31,30 @@ class Method:
         return f'[method] {self.name}({params}): {self.return_type.name};'
 
     def __eq__(self, other):
-        return other.name == self.name and \
-               other.return_type == self.return_type and \
-               other.param_types == self.param_types
+        return (other.name == self.name and
+                other.return_type == self.return_type and
+                tuple(other.param_types) == tuple(self.param_types))
+
+    # def __hash__(self):
+    #     return hash((self.name, tuple(self.param_names), tuple(self.param_types), self.return_type))
 
 
 class Type:
     def __init__(self, name: str):
         self.name: str = name
         self.attributes_list: List[Attribute] = []
-        self.methods_list: List[Method] = []
         self.attributes_dict: Dict[str, Attribute] = {}
+        self.methods_list: List[Method] = []
         self.methods_dict: Dict[str, Method] = {}
         self.parent: Optional['Type'] = None
+
+    @property
+    def attributes(self):
+        return self.attributes_list
+
+    @property
+    def methods(self):
+        return self.methods_list
 
     def set_parent(self, parent: 'Type') -> None:
         if self.parent is not None:
@@ -152,7 +162,7 @@ class Type:
         return current_type
 
     @staticmethod
-    def multi_join(types: List['Type']):
+    def multi_join(types: List['Type']) -> 'Type':
         static_type = types[0]
         for t in types[1:]:
             static_type = static_type.join(t)
@@ -185,7 +195,7 @@ class Type:
 
 class ErrorType(Type):
     def __init__(self):
-        super().__init__('<error>')
+        super().__init__('Error')
 
     def conforms_to(self, other):
         return True
@@ -218,6 +228,9 @@ class Context:
 
     def __repr__(self):
         return str(self)
+
+    def __iter__(self):
+        return iter(self.types.values())
 
 
 class VariableInfo:

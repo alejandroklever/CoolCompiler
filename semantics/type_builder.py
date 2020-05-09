@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import semantics.astnodes as ast
+import semantics.errors as err
 import semantics.visitor as visitor
 from semantics.scope import Context, SemanticError, Type, ErrorType
 
@@ -34,7 +35,7 @@ class TypeBuilder:
 
         if node.parent is not None:
             if node.parent in ("Int", "String", "Bool", "SELF_TYPE"):
-                self.errors.append('Can not inherits from "Int", "String" or "Bool".')
+                self.errors.append(err.INVALID_PARENT_TYPE)
 
             try:
                 self.current_type.set_parent(self.context.get_type(node.parent))
@@ -56,8 +57,8 @@ class TypeBuilder:
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
-        param_names = ['self']
-        param_types = [self.current_type]
+        param_names = []
+        param_types = []
         for name, typex in node.params:
             param_names.append(name)
             try:

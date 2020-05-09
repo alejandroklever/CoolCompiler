@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 
 import semantics.astnodes as ast
-import semantics.semantic_errors as err
+import semantics.errors as err
 import semantics.visitor as visitor
 from semantics.scope import Context, Type, SemanticError
 
@@ -37,7 +37,7 @@ def topological_ordering(program_node: ast.ProgramNode,
         current_name = stack.pop()
 
         if visited[current_name]:
-            errors.append(f'Cyclic class hierarchy in class {current_name}.')
+            errors.append(f'DependencyError: Circular class dependency involving class {current_name}.')
 
         visited[current_name] = True
         stack += graph[current_name]
@@ -91,18 +91,11 @@ class OverriddenMethodChecker:
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode):
+        # TODO: Change the comparison overriding
+        current_method = self.current_type.get_method(node.id)
         try:
             method, owner = self.current_type.parent.get_method(node.id, get_owner=True)
-
-            if len(method.param_types) != len(node.params) + 1:
-                self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
-
-            for parent_param_type, (_, current_param_type_name) in zip(method.param_types[1:], node.params):
-                if parent_param_type != self.context.get_type(current_param_type_name):
-                    self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
-                    break
-
-            if method.return_type != self.context.get_type(node.return_type):
-                self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, owner.name))
+            if method != current_method:
+                self.errors.append(err.METHOD_OVERRIDE_ERROR % (node.id, owner.name))
         except SemanticError:
             pass

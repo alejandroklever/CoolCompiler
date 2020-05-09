@@ -83,7 +83,7 @@ def comment(lexer):
 
 
 @G.terminal('comment_error', r'\(\*(.|\n)*$')
-def comment(lexer):
+def comment_error(lexer):
     lexer.contain_errors = True
     lex = lexer.token.lex
     for s in lex:

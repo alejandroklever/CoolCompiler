@@ -1,7 +1,7 @@
 from typing import List
 
 import semantics.astnodes as ast
-import semantics.semantic_errors as err
+import semantics.errors as err
 import semantics.visitor as visitor
 from semantics.scope import Context, SemanticError, Type, Method, Scope, ErrorType
 
@@ -37,6 +37,10 @@ class TypeChecker:
         attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
         methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
 
+        for attr, attr_owner in self.current_type.all_attributes():
+            if attr_owner != self.current_type:
+                scope.define_variable(attr.name, attr.type)
+
         for attr in attrs:
             self.visit(attr, scope)
 
@@ -64,6 +68,9 @@ class TypeChecker:
         # Parameters can hide the attribute declaration, that's why we are not checking if there is defined,
         # instead we are checking for local declaration. Also it is checked that the static type of a parameter is
         # different of SELF_TYPE.
+
+        scope.define_variable('self', self.current_type)
+
         for (param_name, param_type) in zip(self.current_method.param_names, self.current_method.param_types):
             if not scope.is_local(param_name):
                 if param_type.name == 'SELF_TYPE':
