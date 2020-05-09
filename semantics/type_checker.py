@@ -71,7 +71,7 @@ class TypeChecker:
 
         scope.define_variable('self', self.current_type)
 
-        for (param_name, param_type) in zip(self.current_method.param_names, self.current_method.param_types):
+        for param_name, param_type in zip(self.current_method.param_names, self.current_method.param_types):
             if not scope.is_local(param_name):
                 if param_type.name == 'SELF_TYPE':
                     self.errors.append(err.INVALID_PARAM_TYPE % 'SELF_TYPE')

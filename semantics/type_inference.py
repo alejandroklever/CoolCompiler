@@ -96,7 +96,7 @@ class InferenceChecker:
         self.variables = {}
         self.attributes = self.build_attributes_reference(context)
         self.methods = self.build_methods_reference(context)
-        self.dependencies = DependencyGraph()
+        self.graph = DependencyGraph()
 
     @staticmethod
     def build_attributes_reference(context: Context) -> Dict[Tuple[str, str], AttributeNode]:
@@ -159,24 +159,48 @@ class InferenceChecker:
 
             # If the expression node is not None then two edges are creates in the graph
             if expr_node is not None:
-                self.dependencies.add_edge(expr_node, var_info_node)
-                self.dependencies.add_edge(expr_node, attr_node)
+                self.graph.add_edge(expr_node, var_info_node)
+                self.graph.add_edge(expr_node, attr_node)
 
-            # Finally a cycle is of two nodes are created between var_info_node and attr_node
-            self.dependencies.add_edge(var_info_node, attr_node)
-            self.dependencies.add_edge(attr_node, var_info_node)
+            # Finally a cycle of two nodes is created between var_info_node and attr_node
+            self.graph.add_edge(var_info_node, attr_node)
+            self.graph.add_edge(attr_node, var_info_node)
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
         self.current_method = self.current_type.get_method(node.id)
 
+        # Define 'self' as a variable in the scope
         self_var = scope.define_variable('self', self.current_type)
+
+        # Set the reference of 'self' variable info node
         self.variables[self_var] = VariableInfoNode(self.current_type, self_var)
 
-        for param_name, param_type in zip(self.current_method.param_names, self.current_method.param_types):
-            pass
+        param_names = self.current_method.param_names
+        param_types = self.current_method.param_types
 
-        pass
+        for i, (param_name, param_type) in enumerate(zip(param_names, param_types)):
+            # Define parameter as local variable in current scope
+            param_var_info = scope.define_variable(param_name, param_type)
+
+            # Set the reference to the variable info node
+            param_var_info_node = self.variables[param_var_info] = VariableInfoNode(param_type, param_var_info)
+
+            if param_type.name == 'AUTO_TYPE':
+                # Get the parameter node
+                parameter_node = self.methods[self.current_type.name, self.current_method.name][0][i]
+
+                # Create the cycle of two nodes between param_var_info_node and parameter_node
+                self.graph.add_edge(param_var_info_node, parameter_node)
+                self.graph.add_edge(parameter_node, param_var_info_node)
+
+        # Solve the body of the method
+        body_node = self.visit(node.body, scope)
+
+        if self.current_method.return_type.name == 'AUTO_TYPE':
+            # Get the return type node and add an edge body_node -> return_type_node
+            return_type_node = self.methods[self.current_type.name, self.current_method.name][1]
+            self.graph.add_edge(body_node, return_type_node)
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
