@@ -83,7 +83,7 @@ if __name__ == '__main__':
     topological_ordering(ast, context, errors)
     OverriddenMethodChecker(context, errors).visit(ast)
     InferenceChecker(context, errors).visit(ast, scope)
-    # TypeChecker(context, errors).visit(ast, scope)
+    TypeChecker(context, errors).visit(ast, scope)
     # Executor(context, errors).visit(ast, scope)
 
     print(CodeBuilder().visit(ast))

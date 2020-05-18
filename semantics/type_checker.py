@@ -196,13 +196,13 @@ class TypeChecker:
                 self.visit(arg, scope)
             return ErrorType()
 
-        if len(node.args) + 1 != len(method.param_names):
+        if len(node.args) != len(method.param_names):
             self.errors.append(err.METHOD_OVERRIDE_ERROR % (method.name, obj_type.name))
 
         if not obj_type.conforms_to(method.param_types[0]):
             self.errors.append(err.INCOMPATIBLE_TYPES % (obj_type.name, method.param_types[0].name))
 
-        for i, arg in enumerate(node.args, 1):
+        for i, arg in enumerate(node.args):
             arg_type = self.visit(arg, scope)
             if not arg_type.conforms_to(method.param_types[i]):
                 self.errors.append(err.INCOMPATIBLE_TYPES % (arg_type.name, method.param_types[i].name))
