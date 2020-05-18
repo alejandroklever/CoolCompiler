@@ -99,8 +99,8 @@ class TypeChecker:
         try:
             var_static_type = self.context.get_type(node.type) if node.type != 'SELF_TYPE' else self.current_type
         except SemanticError as e:
-            var_static_type = ErrorType()
             self.errors.append(e.text)
+            var_static_type = ErrorType()
 
         if scope.is_local(node.id):
             self.errors.append(err.LOCAL_ALREADY_DEFINED % (node.id, self.current_method.name))
@@ -115,15 +115,17 @@ class TypeChecker:
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
-        expr_type = self.visit(node.expr, scope)
         var_info = scope.find_variable(node.id)
+
+        expr_type = self.visit(node.expr, scope.create_child())
+
         if var_info is None:
             self.errors.append(err.VARIABLE_NOT_DEFINED % (node.id, self.current_method.name))
-            return ErrorType()
         else:
             if not expr_type.conforms_to(var_info.type):
                 self.errors.append(err.INCOMPATIBLE_TYPES % (expr_type.name, var_info.type.name))
-            return var_info.type
+
+        return expr_type
 
     @visitor.when(ast.BlockNode)
     def visit(self, node: ast.BlockNode, scope: Scope):
@@ -147,7 +149,7 @@ class TypeChecker:
         if condition != self.context.get_type('Bool'):
             self.errors.append(err.INCOMPATIBLE_TYPES % (condition.name, 'Bool'))
 
-        self.visit(node.body)
+        self.visit(node.body, scope.create_child())
         return self.context.get_type('Object')
 
     @visitor.when(ast.SwitchCaseNode)

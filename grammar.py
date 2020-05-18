@@ -157,17 +157,17 @@ expr %= 'case expr of case-list esac', lambda s: ast.SwitchCaseNode(s[2], s[4])
 expr %= 'not expr', lambda s: ast.NegationNode(s[2])
 expr %= 'comp', lambda s: s[1]
 
-comp %= 'arith < arith', lambda s: ast.LessThanNode(s[1], s[3])
-comp %= 'arith <= arith', lambda s: ast.LessEqualNode(s[1], s[3])
-comp %= 'arith = arith', lambda s: ast.EqualNode(s[1], s[3])
+comp %= 'arith < arith', lambda s: ast.LessThanNode(s[1], s[2], s[3])
+comp %= 'arith <= arith', lambda s: ast.LessEqualNode(s[1], s[2], s[3])
+comp %= 'arith = arith', lambda s: ast.EqualNode(s[1], s[2], s[3])
 comp %= 'arith', lambda s: s[1]
 
-arith %= 'arith + term', lambda s: ast.PlusNode(s[1], s[3])
-arith %= 'arith - term', lambda s: ast.MinusNode(s[1], s[3])
+arith %= 'arith + term', lambda s: ast.PlusNode(s[1], s[2], s[3])
+arith %= 'arith - term', lambda s: ast.MinusNode(s[1], s[2], s[3])
 arith %= 'term', lambda s: s[1]
 
-term %= 'term * factor', lambda s: ast.StarNode(s[1], s[3])
-term %= 'term / factor', lambda s: ast.DivNode(s[1], s[3])
+term %= 'term * factor', lambda s: ast.StarNode(s[1], s[2], s[3])
+term %= 'term / factor', lambda s: ast.DivNode(s[1], s[2], s[3])
 term %= 'factor', lambda s: s[1]
 
 factor %= 'isvoid factor', lambda s: ast.IsVoidNode(s[2])
@@ -196,7 +196,11 @@ case_list %= 'id : type => expr ; case-list', lambda s: [ast.CaseNode(s[1], s[3]
 
 function_call %= 'id ( expr-list )', lambda s: ast.MethodCallNode(s[1], s[3])
 function_call %= 'atom . id ( expr-list )', lambda s: ast.MethodCallNode(s[3], s[5], s[1])
-function_call %= 'atom @ type . id ( expr-list )', lambda s: ast.MethodCallNode(s[3], s[5], s[1])
+function_call %= 'atom @ type . id ( expr-list )', lambda s: ast.MethodCallNode(s[5], s[7], s[1], s[3])
+
+function_call %= 'id ( )', lambda s: ast.MethodCallNode(s[1], [])
+function_call %= 'atom . id ( )', lambda s: ast.MethodCallNode(s[3], [], s[1])
+function_call %= 'atom @ type . id ( )', lambda s: ast.MethodCallNode(s[5], [], s[1], s[3])
 
 expr_list %= 'expr', lambda s: [s[1]]
 expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
@@ -219,7 +223,7 @@ def attribute_error(s):
     return s[1]
 
 
-@G.production("case-list -> id : type => expr ;")
+@G.production("case-list -> id : type => expr error")
 def case_list_error(s):
     s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
     return [ast.CaseNode(s[1], s[3], s[5])]

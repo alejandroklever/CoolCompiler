@@ -2,6 +2,105 @@ import semantics.astnodes as ast
 import semantics.visitor as visitor
 
 
+class CodeBuilder:
+    @visitor.on('node')
+    def visit(self, node, tabs):
+        pass
+
+    @visitor.when(ast.ProgramNode)
+    def visit(self, node: ast.ProgramNode, tabs: int = 0):
+        return '\n\n'.join(self.visit(child, tabs) for child in node.declarations)
+
+    @visitor.when(ast.ClassDeclarationNode)
+    def visit(self, node: ast.ClassDeclarationNode, tabs: int = 0):
+        parent = '' if node.parent is None else f"inherits {node.parent} "
+        return (f'class {node.id} {parent}{{\n' +
+                '\n\n'.join(self.visit(child, tabs + 1) for child in node.features) +
+                '\n}')
+
+    @visitor.when(ast.AttrDeclarationNode)
+    def visit(self, node: ast.AttrDeclarationNode, tabs: int = 0):
+        expr = f' <- {self.visit(node.expr, tabs)}' if node.expr is not None else ''
+        return '\t' * tabs + f'{node.id}: {node.type}{expr};'
+
+    @visitor.when(ast.MethodDeclarationNode)
+    def visit(self, node: ast.MethodDeclarationNode, tabs: int = 0):
+        params = ', '.join(': '.join(param) for param in node.params)
+        ans = '\t' * tabs + f'{node.id} ({params}): {node.return_type}'
+        body = self.visit(node.body, tabs + 1)
+        return f'{ans} {{\n{body}\n\t}};'
+
+    @visitor.when(ast.LetNode)
+    def visit(self, node: ast.LetNode, tabs: int = 0):
+        declarations = '\n'.join(self.visit(declaration, 0) for declaration in node.declarations)
+        return '\t' * tabs + f'let {declarations} in \n{self.visit(node.expr, tabs + 1)}'
+
+    @visitor.when(ast.VarDeclarationNode)
+    def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
+        if node.expr is not None:
+            return f'{node.id}: {node.type} <- {self.visit(node.expr)}'
+        else:
+            return f'{node.id} : {node.type}'
+
+    @visitor.when(ast.AssignNode)
+    def visit(self, node: ast.AssignNode, tabs: int = 0):
+        return '\t' * tabs + f'{node.id} <- {self.visit(node.expr)}'
+
+    @visitor.when(ast.BlockNode)
+    def visit(self, node: ast.BlockNode, tabs: int = 0):
+        body = ';\n'.join(self.visit(child, tabs + 1) for child in node.expressions)
+        return '\t' * tabs + f'{{\n{body};\n' + '\t' * tabs + '}'
+
+    @visitor.when(ast.ConditionalNode)
+    def visit(self, node: ast.ConditionalNode, tabs: int = 0):
+        ifx = self.visit(node.if_expr)
+        then = self.visit(node.then_expr, tabs + 1)
+        elsex = self.visit(node.else_expr, tabs + 1)
+
+        return ('\t' * tabs + f'if {ifx}\n' +
+                '\t' * tabs + f'then\n{then}\n' +
+                '\t' * tabs + f'else\n{elsex}\n' +
+                '\t' * tabs + 'fi')
+
+    @visitor.when(ast.WhileNode)
+    def visit(self, node: ast.WhileNode, tabs: int = 0):
+        condition = self.visit(node.condition, 0)
+        body = self.visit(node.body, tabs + 1)
+
+        return '\t' * tabs + f'while {condition} loop\n {body}\n' + '\t' * tabs + 'pool'
+
+    @visitor.when(ast.SwitchCaseNode)
+    def visit(self, node: ast.SwitchCaseNode, tabs: int = 0):
+        expr = self.visit(node.expr)
+        cases = '\n'.join(self.visit(case, tabs + 1) for case in node.cases)
+
+        return '\t' * tabs + f'case {expr} of \n{cases}\n' + '\t' * tabs + 'esac'
+
+    @visitor.when(ast.CaseNode)
+    def visit(self, node: ast.CaseNode, tabs: int = 0):
+        expr = self.visit(node.expr, tabs + 1)
+        return '\t' * tabs + f'{node.id} : {node.type} =>\n{expr};'
+
+    @visitor.when(ast.MethodCallNode)
+    def visit(self, node: ast.MethodCallNode, tabs: int = 0):
+        obj = f'{self.visit(node.obj, 0)}.' if node.obj is not None else ''
+        return '\t' * tabs + f'{obj}{node.id}({", ".join(self.visit(arg, 0) for arg in node.args)})'
+
+    @visitor.when(ast.BinaryNode)
+    def visit(self, node: ast.BinaryNode, tabs: int = 0):
+        left = self.visit(node.left) if isinstance(node.left, ast.BinaryNode) else self.visit(node.left, tabs)
+        right = self.visit(node.right)
+        return f'{left} {node.operation} {right}'
+
+    @visitor.when(ast.AtomicNode)
+    def visit(self, node: ast.AtomicNode, tabs: int = 0):
+        return '\t' * tabs + f'{node.lex}'
+
+    @visitor.when(ast.InstantiateNode)
+    def visit(self, node: ast.InstantiateNode, tabs: int = 0):
+        return '\t' * tabs + f'new {node.lex}'
+
+
 class Formatter:
     @visitor.on('node')
     def visit(self, node, tabs):

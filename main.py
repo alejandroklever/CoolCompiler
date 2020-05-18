@@ -1,16 +1,68 @@
 from lexer import CoolLexer
 from parser import CoolParser
 from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
+from semantics.formatter import CodeBuilder
 from semantics.scope import Context, Scope
+from semantics.type_inference import InferenceChecker
 
 program = r"""
 class Main inherits IO {
-    main(): IO {
-        out_string("Hello, World.\n")
-    };
+    a: Int;
+
+    main(): IO {{
+        let a: Int <- 2 in a;
+        
+        a <- 2;
+        
+        new IO;
+        
+        while true loop
+            0
+        pool;
+        
+        case a of
+            x: Int => 
+                x + 2;n 
+            x: String => 
+                x.concat(" is a String\n");
+        esac;
+        
+        out_string("Hello, World.\n");
+    }};
 
     fibonacci(n: AUTO_TYPE): Int {
-        if n <= 2 then 0 else fibonacci(n - 1) + fibonacci(n - 2) fi
+        if n <= 2 
+        then 
+            0 
+        else 
+            fibonacci(n - 1) + fibonacci(n - 2) fi
+    };
+}
+"""
+
+inference_program_01 = r"""
+class Point {
+    a: AUTO_TYPE;
+    b: AUTO_TYPE;
+
+    init(x: AUTO_TYPE, y: AUTO_TYPE): AUTO_TYPE {{
+        a <- b;
+        b <- x + y;
+        create_point();
+    }};
+    
+    create_point(): AUTO_TYPE { new Point };
+}
+"""
+
+inference_program_02 = r"""
+class Ackermann {
+    ackermann(m: AUTO_TYPE, n: AUTO_TYPE): AUTO_TYPE {
+        if m = 0 then n + 1 else
+            if n = 0 then ackermann(m - 1, 1) else
+                ackermann(m - 1, ackermann(m, n - 1))
+            fi
+        fi
     };
 }
 """
@@ -19,46 +71,22 @@ lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
-    # tokens = lexer(program)
-    # ast = parser(tokens)
-    #
-    # context = Context()
-    # errors = []
-    # scope = Scope()
-    #
-    # TypeCollector(context, errors).visit(ast)
-    # TypeBuilder(context, errors).visit(ast)
-    # topological_ordering(ast, context, errors)
-    # OverriddenMethodChecker(context, errors).visit(ast)
+    tokens = lexer(inference_program_02)
+    ast = parser(tokens)
+
+    context = Context()
+    errors = []
+    scope = Scope()
+
+    TypeCollector(context, errors).visit(ast)
+    TypeBuilder(context, errors).visit(ast)
+    topological_ordering(ast, context, errors)
+    OverriddenMethodChecker(context, errors).visit(ast)
+    InferenceChecker(context, errors).visit(ast, scope)
     # TypeChecker(context, errors).visit(ast, scope)
-    # # Executor(context, errors).visit(ast, scope)
-    #
-    # for error in errors:
-    #     print(error)
-    # print("Done!")
+    # Executor(context, errors).visit(ast, scope)
 
-    class MyClass:
-        def __init__(self, name):
-            self.name = name
-
-        def __hash__(self):
-            return id(self)
-
-        def __str__(self):
-            return self.name
-
-        def __repr__(self):
-            return self.name
-
-    a = MyClass('Item0')
-    b = MyClass('Item1')
-    c = MyClass('Item2')
-    d = MyClass('Item3')
-    e = MyClass('Item4')
-
-    objects = {(0, a), (1, b), (2, c), (3, d), (4, e)}
-
-    print((4, e) in objects)
-    e.name = 'NewItem'
-    print((4, e) in objects)
-    print(objects)
+    print(CodeBuilder().visit(ast))
+    for error in errors:
+        print(error)
+    print("Done!")

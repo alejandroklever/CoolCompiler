@@ -111,8 +111,9 @@ class UnaryNode(ExprNode):
 
 
 class BinaryNode(ExprNode):
-    def __init__(self, left, right):
+    def __init__(self, left, operation, right):
         self.left: ExprNode = left
+        self.operation: str = operation
         self.right: ExprNode = right
 
 
