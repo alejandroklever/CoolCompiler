@@ -1,5 +1,16 @@
-from collections import deque
-from typing import Dict, List, Tuple, Set
+"""The type inference algorithm consist in a dependency di-graph with special nodes to handle the behavior of the
+updates of components in the code and solve it in the `context`. For that we crate an structure called
+DependencyGraph where we can create nodes as an structure called DependencyNode and arcs between them, and arc e =
+<x,y> where x and y are dependency nodes means that the type of node y in inferred by the type of node x,
+so for solve the type of y we need first to infer the type of x. For this operation we need some basic nodes that
+only contains the type of the node called AtomNode and in the digraph formation an AtomNode is never inferred from
+another node. The DependencyGraph consist in a dictionary[node, adjacency list] this adjacency has an declaration
+order an this is fundamental for the inference solution algorithm. If we have a case {x : [y, z]} where x, y,
+z are nodes then the algorithm will determinate the type of y and all it dependencies before to start with z (a
+simple BFS). The order in the adjacency list is the appearance order in the program. The Dependency graph has a list
+of nodes in it's order of declaration"""
+from collections import deque, OrderedDict
+from typing import Dict, List, Tuple, Set, OrderedDict as OrderedDictionary
 
 import semantics.astnodes as ast
 import semantics.errors as err
@@ -77,24 +88,21 @@ class ReturnTypeNode(DependencyNode):
 
 class DependencyGraph:
     def __init__(self):
-        self.dependencies: Dict[DependencyNode, List[DependencyNode]] = {}
-        self.nodes: List[DependencyNode] = []
+        self.dependencies: OrderedDictionary[DependencyNode, List[DependencyNode]] = OrderedDict()
 
     def add_node(self, node: DependencyNode):
         if node not in self.dependencies:
             self.dependencies[node] = []
-            self.nodes.append(node)
 
     def add_edge(self, node: DependencyNode, other: DependencyNode):
         try:
             self.dependencies[node].append(other)
         except KeyError:
             self.dependencies[node] = [other]
-        self.nodes.append(node)
         self.add_node(other)
 
     def update_dependencies(self):
-        queue = deque(key for key in self.nodes if isinstance(key, AtomNode))
+        queue = deque(key for key in self.dependencies if isinstance(key, AtomNode))
         visited = set()
 
         while queue:
