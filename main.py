@@ -71,7 +71,7 @@ lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
-    tokens = lexer(inference_program_02)
+    tokens = lexer(inference_program_01)
     ast = parser(tokens)
 
     context = Context()

@@ -7,10 +7,10 @@ only contains the type of the node called AtomNode and in the digraph formation 
 another node. The DependencyGraph consist in a dictionary[node, adjacency list] this adjacency has an declaration
 order an this is fundamental for the inference solution algorithm. If we have a case {x : [y, z]} where x, y,
 z are nodes then the algorithm will determinate the type of y and all it dependencies before to start with z (a
-simple BFS). The order in the adjacency list is the appearance order in the program. The Dependency graph has a list
-of nodes in it's order of declaration"""
+simple BFS). The order in the adjacency list is the same appearance order in the program. At the end of the algorithm
+all node that cannot solve it type will be tagged as `Object`"""
 from collections import deque, OrderedDict
-from typing import Dict, List, Tuple, Set, OrderedDict as OrderedDictionary
+from typing import Dict, List, Tuple, Set
 
 import semantics.astnodes as ast
 import semantics.errors as err
@@ -88,7 +88,7 @@ class ReturnTypeNode(DependencyNode):
 
 class DependencyGraph:
     def __init__(self):
-        self.dependencies: OrderedDictionary[DependencyNode, List[DependencyNode]] = OrderedDict()
+        self.dependencies: OrderedDict[DependencyNode, List[DependencyNode]] = OrderedDict()
 
     def add_node(self, node: DependencyNode):
         if node not in self.dependencies:
@@ -124,7 +124,7 @@ class DependencyGraph:
             queue.extend(self.dependencies[current_node])
 
     def __str__(self):
-        return '\n'.join(f'{key}: {value}' for key, value in self.dependencies.items())
+        return '{\n' + '\n'.join(f'{key}: {value}' for key, value in self.dependencies.items()) + '}'
 
 
 class InferenceChecker:

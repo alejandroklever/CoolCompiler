@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import List, Optional, Dict, Tuple, Union
 
 
@@ -35,26 +36,21 @@ class Method:
                 other.return_type == self.return_type and
                 tuple(other.param_types) == tuple(self.param_types))
 
-    # def __hash__(self):
-    #     return hash((self.name, tuple(self.param_names), tuple(self.param_types), self.return_type))
-
 
 class Type:
     def __init__(self, name: str):
         self.name: str = name
-        self.attributes_list: List[Attribute] = []
-        self.attributes_dict: Dict[str, Attribute] = {}
-        self.methods_list: List[Method] = []
-        self.methods_dict: Dict[str, Method] = {}
+        self.attributes_dict: OrderedDict[str, Attribute] = OrderedDict()
+        self.methods_dict: OrderedDict[str, Method] = OrderedDict()
         self.parent: Optional['Type'] = None
 
     @property
     def attributes(self):
-        return self.attributes_list
+        return [x for _, x in self.attributes_dict.items()]
 
     @property
     def methods(self):
-        return self.methods_list
+        return [x for _, x in self.methods_dict.items()]
 
     def set_parent(self, parent: 'Type') -> None:
         if self.parent is not None:
@@ -90,7 +86,6 @@ class Type:
             self.get_attribute(name)
         except SemanticError:
             attribute = Attribute(name, typex)
-            self.attributes_list.append(attribute)
             self.attributes_dict[name] = attribute
             return attribute
         else:
@@ -131,7 +126,6 @@ class Type:
             raise SemanticError(f'Method "{name}" already defined in {self.name}')
 
         method = Method(name, param_names, param_types, return_type)
-        self.methods_list.append(method)
         self.methods_dict[name] = method
         return method
 
@@ -140,12 +134,12 @@ class Type:
 
     def all_attributes(self) -> List[Tuple[Attribute, 'Type']]:
         attributes = [] if self.parent is None else self.parent.all_attributes()
-        attributes += [(x, self) for x in self.attributes_list]
+        attributes += [(x, self) for x in self.attributes]
         return attributes
 
     def all_methods(self) -> List[Tuple[Method, 'Type']]:
         methods = [] if self.parent is None else self.parent.all_methods()
-        methods += [(x, self) for x in self.methods_list]
+        methods += [(x, self) for x in self.methods]
         return methods
 
     def conforms_to(self, other: 'Type') -> bool:
@@ -181,10 +175,10 @@ class Type:
         parent = '' if self.parent is None else f' : {self.parent.name}'
         output += parent
         output += ' {'
-        output += '\n\t' if self.attributes_list or self.methods_list else ''
-        output += '\n\t'.join(str(x) for x in self.attributes_list)
+        output += '\n\t' if self.attributes or self.methods else ''
+        output += '\n\t'.join(str(x) for x in self.attributes)
         output += '\n\t' if self.attributes_dict else ''
-        output += '\n\t'.join(str(x) for x in self.methods_list)
+        output += '\n\t'.join(str(x) for x in self.methods)
         output += '\n' if self.methods_dict else ''
         output += '}\n'
         return output
