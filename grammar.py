@@ -66,7 +66,6 @@ G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
 ###############
 G.add_terminal('string', regex=r'\"[^\"]*\"')
 G.add_terminal('int', regex=r'\d+')
-G.add_terminal('char', regex=r'\'[^\']*\'')
 
 
 ############
@@ -84,7 +83,7 @@ def comment(lexer):
 
 
 @G.terminal('comment_error', r'\(\*(.|\n)*$')
-def comment_error(lexer):
+def comment_eof_error(lexer):
     lexer.contain_errors = True
     lex = lexer.token.lex
     for s in lex:
