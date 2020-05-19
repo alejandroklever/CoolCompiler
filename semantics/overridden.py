@@ -1,9 +1,9 @@
 from typing import List, Dict, Optional
 
-import semantics.astnodes as ast
-import semantics.errors as err
+import semantics.utils.astnodes as ast
+import semantics.utils.errors as err
 import semantics.visitor as visitor
-from semantics.scope import Context, Type, SemanticError
+from semantics.utils.scope import Context, Type, SemanticError
 
 
 def topological_ordering(program_node: ast.ProgramNode,

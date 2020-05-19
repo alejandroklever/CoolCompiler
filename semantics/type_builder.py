@@ -1,9 +1,9 @@
 from typing import List, Optional
 
-import semantics.astnodes as ast
-import semantics.errors as err
+import semantics.utils.astnodes as ast
+import semantics.utils.errors as err
 import semantics.visitor as visitor
-from semantics.scope import Context, SemanticError, Type, ErrorType
+from semantics.utils.scope import Context, SemanticError, Type, ErrorType
 
 
 class TypeBuilder:

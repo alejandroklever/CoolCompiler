@@ -2,7 +2,7 @@ from lexer import CoolLexer
 from parser import CoolParser
 from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
 from semantics.formatter import CodeBuilder
-from semantics.scope import Context, Scope
+from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
 
 program = r"""

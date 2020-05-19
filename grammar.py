@@ -1,7 +1,7 @@
 import inspect
 import time
 
-from semantics import astnodes as ast
+from semantics.utils import astnodes as ast
 from cmp.parsing import LALR1Parser
 from cmp.pycompiler import Grammar
 

@@ -37,10 +37,10 @@ All nodes has an implementation of the method update that handle how to update t
 from collections import deque, OrderedDict
 from typing import Dict, List, Tuple, Set
 
-import semantics.astnodes as ast
-import semantics.errors as err
+import semantics.utils.astnodes as ast
+import semantics.utils.errors as err
 import semantics.visitor as visitor
-from semantics.scope import Type, Attribute, Method, Scope, Context, SemanticError, ErrorType, VariableInfo
+from semantics.utils.scope import Type, Attribute, Method, Scope, Context, SemanticError, ErrorType, VariableInfo
 
 
 class DependencyNode:

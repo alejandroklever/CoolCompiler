@@ -1,4 +1,4 @@
-import semantics.astnodes as ast
+import semantics.utils.astnodes as ast
 import semantics.visitor as visitor
 
 

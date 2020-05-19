@@ -1,8 +1,8 @@
 from typing import List
 
-import semantics.astnodes as ast
+import semantics.utils.astnodes as ast
 import semantics.visitor as visitor
-from semantics.scope import Context, Type, Method, Scope
+from semantics.utils.scope import Context, Type, Method, Scope
 
 
 class Executor:
