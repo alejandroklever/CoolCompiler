@@ -22,6 +22,7 @@ declaration_list = G.add_non_terminal('declaration-list')
 case_list = G.add_non_terminal('case-list')
 function_call = G.add_non_terminal('function-call')
 expr_list = G.add_non_terminal('expr-list')
+not_empty_expr_list = G.add_non_terminal('not-empty-expr-list')
 expr = G.add_non_terminal('expr')
 comp = G.add_non_terminal('comp')
 arith = G.add_non_terminal('arith')
@@ -198,12 +199,10 @@ function_call %= 'id ( expr-list )', lambda s: ast.MethodCallNode(s[1], s[3])
 function_call %= 'atom . id ( expr-list )', lambda s: ast.MethodCallNode(s[3], s[5], s[1])
 function_call %= 'atom @ type . id ( expr-list )', lambda s: ast.MethodCallNode(s[5], s[7], s[1], s[3])
 
-function_call %= 'id ( )', lambda s: ast.MethodCallNode(s[1], [])
-function_call %= 'atom . id ( )', lambda s: ast.MethodCallNode(s[3], [], s[1])
-function_call %= 'atom @ type . id ( )', lambda s: ast.MethodCallNode(s[5], [], s[1], s[3])
-
-expr_list %= 'expr', lambda s: [s[1]]
-expr_list %= 'expr , expr-list', lambda s: [s[1]] + s[3]
+expr_list %= '', lambda s: []
+expr_list %= 'not-empty-expr-list', lambda s: s[1]
+not_empty_expr_list %= 'expr', lambda s: [s[1]]
+not_empty_expr_list %= 'expr , not-empty-expr-list', lambda s: [s[1]] + s[3]
 
 #####################
 # Error Productions #

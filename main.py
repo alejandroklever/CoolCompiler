@@ -86,7 +86,7 @@ class Main {
 inference_program_04 = r"""
 class Main inherits IO {
     f(a: Int): Int {
-        f(a)
+        g(a)
     };
 
     g(a: AUTO_TYPE): Int{
