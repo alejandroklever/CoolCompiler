@@ -8,7 +8,32 @@ another node. The DependencyGraph consist in a dictionary[node, adjacency list] 
 order an this is fundamental for the inference solution algorithm. If we have a case {x : [y, z]} where x, y,
 z are nodes then the algorithm will determinate the type of y and all it dependencies before to start with z (a
 simple BFS). The order in the adjacency list is the same appearance order in the program. At the end of the algorithm
-all node that cannot solve it type will be tagged as `Object`"""
+all node that cannot solve it type will be tagged as `Object`.
+
+DependencyNode hierarchy
+    AtomNode
+        - type : Node type
+
+    VariableInfoNode
+        - type: Node type
+        - variable_type : Reference to the variable info of the scope
+
+    AttributeNode
+        - type : Node type
+        - attribute : Reference to the attribute of the class
+
+    ParameterNode
+        - type : Node type
+        - method : Reference to the method of the class
+        - index : Index of the parameter of the method
+
+    ReturnTypeNode
+        - type : Node type
+        - method : Reference to the method of the class
+
+All nodes has an implementation of the method update that handle how to update the type by it's dependencies
+
+"""
 from collections import deque, OrderedDict
 from typing import Dict, List, Tuple, Set
 
@@ -101,7 +126,7 @@ class DependencyGraph:
             self.dependencies[node] = [other]
         self.add_node(other)
 
-    def update_dependencies(self):
+    def update_dependencies(self, default_type: Type = None):
         queue = deque(key for key in self.dependencies if isinstance(key, AtomNode))
         visited = set()
 
@@ -110,6 +135,11 @@ class DependencyGraph:
             if current_node in visited:
                 continue
             self.update_dependencies_of(current_node, current_node.type, visited)
+
+        if default_type is not None:
+            for node in self.dependencies:
+                if node not in visited:
+                    node.update(default_type)
 
     def update_dependencies_of(self, node: DependencyNode, typex: Type, visited: Set[DependencyNode]):
         queue = deque([node] + self.dependencies[node])
@@ -173,8 +203,7 @@ class InferenceChecker:
         for item in node.declarations:
             self.visit(item, scope.create_child())
 
-        # print(self.graph)
-        self.graph.update_dependencies()
+        self.graph.update_dependencies(default_type=self.context.get_type('Object'))
         InferenceTypeSubstitute(self.context, self.errors).visit(node, scope)
 
     @visitor.when(ast.ClassDeclarationNode)
@@ -257,6 +286,7 @@ class InferenceChecker:
     @visitor.when(ast.VarDeclarationNode)
     def visit(self, node: ast.VarDeclarationNode, scope: Scope):
         try:
+            # Define and get the var_info
             var_info = scope.define_variable(node.id, self.context.get_type(node.type))
         except SemanticError:
             var_info = scope.define_variable(node.id, ErrorType())
@@ -265,6 +295,7 @@ class InferenceChecker:
         expr_node = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
 
         if var_info.type.name == 'AUTO_TYPE':
+            # Create an edge only if is AutoType
             self.graph.add_edge(expr_node, var_info_node)
 
     @visitor.when(ast.AssignNode)
@@ -276,7 +307,6 @@ class InferenceChecker:
         if var_info is not None:
             self.graph.add_edge(expr_node, self.variables[var_info])
         else:
-            # Maybe some error
             pass
 
         return expr_node

@@ -67,11 +67,39 @@ class Ackermann {
 }
 """
 
+inference_program_03 = r"""
+class Main {
+    f(a: AUTO_TYPE, b: AUTO_TYPE): AUTO_TYPE {
+        if a = 1 then b else
+            g(a + 1, b / 1) 
+        fi
+    };
+    
+    g(a: AUTO_TYPE, b: AUTO_TYPE): AUTO_TYPE {
+        if b = 1 then a else
+            f(a / 2, b + 1) 
+        fi
+    };
+}
+"""
+
+inference_program_04 = r"""
+class Main inherits IO {
+    f(a: Int): Int {
+        f(a)
+    };
+
+    g(a: AUTO_TYPE): Int{
+        1
+    };
+}
+"""
+
 lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
-    tokens = lexer(inference_program_01)
+    tokens = lexer(inference_program_04)
     ast = parser(tokens)
 
     context = Context()
