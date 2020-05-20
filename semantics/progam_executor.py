@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Dict
 
 import semantics.utils.astnodes as ast
 import semantics.visitor as visitor
@@ -11,6 +11,7 @@ class Executor:
         self.errors: List[str] = errors
         self.current_type: Type = None
         self.current_method: Method = None
+        self.methods: Dict[Tuple[str, str], ast.MethodDeclarationNode]
 
     @visitor.on('node')
     def visit(self, node, tabs):
@@ -18,7 +19,8 @@ class Executor:
 
     @visitor.when(ast.ProgramNode)
     def visit(self, node: ast.ProgramNode, scope: Scope = None):
-        pass
+        execution_node = ast.MethodCallNode('main', [], ast.InstantiateNode('Main'))
+        self.visit(execution_node)
 
     @visitor.when(ast.ClassDeclarationNode)
     def visit(self, node: ast.ClassDeclarationNode, scope: Scope):

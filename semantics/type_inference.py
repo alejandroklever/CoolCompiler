@@ -359,8 +359,8 @@ class InferenceChecker:
         obj_node = self.visit(node.obj, scope)
 
         if isinstance(obj_node, AtomNode):
-            method = obj_node.type.get_method(node.id)
-            param_nodes, return_node = self.methods[obj_node.type.name, method.name]
+            method, owner = obj_node.type.get_method(node.id, get_owner=True)
+            param_nodes, return_node = self.methods[owner.name, method.name]
             for i, arg in enumerate(node.args):
                 arg_node = self.visit(arg, scope)
                 if isinstance(arg_node, AtomNode):
