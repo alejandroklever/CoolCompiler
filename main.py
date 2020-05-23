@@ -2,6 +2,7 @@ from lexer import CoolLexer
 from parser import CoolParser
 from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
 from semantics.formatter import CodeBuilder
+from semantics.progam_executor import Executor
 from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
 
@@ -95,11 +96,26 @@ class Main inherits IO {
 }
 """
 
+hello_world = r"""
+class Main inherits IO {
+    x : AUTO_TYPE <- 5 + 5;
+
+    main () : IO {{
+        out_int(x);
+        out_string("\n");
+    }};
+    
+    get_x () : AUTO_TYPE {
+        x 
+    };
+}
+"""
+
 lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
-    tokens = lexer(inference_program_04)
+    tokens = lexer(hello_world)
     ast = parser(tokens)
 
     context = Context()
@@ -112,9 +128,13 @@ if __name__ == '__main__':
     OverriddenMethodChecker(context, errors).visit(ast)
     InferenceChecker(context, errors).visit(ast, scope)
     TypeChecker(context, errors).visit(ast, scope)
-    # Executor(context, errors).visit(ast, scope)
 
     print(CodeBuilder().visit(ast))
+
+    if not errors:
+        print()
+        Executor(context, errors).visit(ast, Scope())
+        print('Program finished...')
+
     for error in errors:
         print(error)
-    print("Done!")

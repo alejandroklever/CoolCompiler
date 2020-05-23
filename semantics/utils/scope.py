@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 from collections import OrderedDict
 from typing import List, Optional, Dict, Tuple, Union
 

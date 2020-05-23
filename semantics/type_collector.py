@@ -41,7 +41,7 @@ class TypeCollector:
         object_type.define_method('copy', [], [], self_type)
 
         io_type.define_method('out_string', ['x'], [string_type], self_type)
-        io_type.define_method('out_int', ['x'], [string_type], self_type)
+        io_type.define_method('out_int', ['x'], [int_type], self_type)
         io_type.define_method('in_string', [], [], string_type)
         io_type.define_method('in_int', [], [], int_type)
 

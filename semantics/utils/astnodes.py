@@ -42,6 +42,11 @@ class ExprNode(Node):
     pass
 
 
+class ParenthesisExpr(ExprNode):
+    def __init__(self, expr):
+        self.expr = expr
+
+
 class BlockNode(ExprNode):
     def __init__(self, expressions):
         self.expressions: List[ExprNode] = expressions
