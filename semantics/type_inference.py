@@ -292,8 +292,8 @@ class InferenceChecker:
             expr_node = self.visit(_expr, scope.create_child()) if _expr is not None else None
 
             if var_info.type.name == 'AUTO_TYPE':
+                # Create an edge or add an new node only if it is AutoType
                 if expr_node is not None:
-                    # Create an edge only if is AutoType
                     self.graph.add_edge(expr_node, var_info_node)
                 else:
                     self.graph.add_node(var_info_node)
@@ -490,11 +490,16 @@ class InferenceTypeSubstitute:
         attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
         methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
 
+        i = 0
         for attr in attrs:
+            if attr.expr is not None:
+                attr.index = i
+                i += 1
             self.visit(attr, scope)
 
-        for i, method in enumerate(methods):
+        for method in methods:
             self.visit(method, scope.children[i])
+            i += 1
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
@@ -502,13 +507,12 @@ class InferenceTypeSubstitute:
         var_info = scope.find_variable(node.id)
 
         if node.expr is not None:
-            self.visit(node.expr, scope.children[0])
+            self.visit(node.expr, scope.children[node.index])
 
         if attr_type == self.context.get_type('AUTO_TYPE'):
             if var_info.type == self.context.get_type('AUTO_TYPE'):
                 self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % node.id)
             node.type = var_info.type.name
-            self.current_type.get_attribute(node.id).type = var_info.type
 
     @visitor.when(ast.MethodDeclarationNode)
     def visit(self, node: ast.MethodDeclarationNode, scope: Scope):
@@ -520,7 +524,6 @@ class InferenceTypeSubstitute:
             if variable_info.type == self.context.get_type('AUTO_TYPE'):
                 self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % name)
             node.params[i] = (name, variable_info.type.name)
-            self.current_method.param_types[i] = variable_info.type
 
         self.visit(node.body, scope)
 

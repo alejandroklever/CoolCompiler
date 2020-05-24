@@ -258,8 +258,11 @@ class Executor:
         instance = Instance(self.context.get_type(node.lex), default)
         self.call_stack.append(self.current_instance)
         self.current_instance = instance
+        fake_scope = Scope()
         for attribute, _ in instance.type.all_attributes():
-            instance.set_attribute_instance(attribute.name, self.visit(attribute.expr, Scope()))
+            attr_instance = self.visit(attribute.expr, fake_scope)
+            fake_scope.define_variable(attribute.name, attribute.type).instance = attr_instance
+            attr_instance.set_attribute_instance(attribute.name, attr_instance)
         self.current_instance = self.call_stack.pop()
         return instance
 
