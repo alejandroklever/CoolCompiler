@@ -191,8 +191,8 @@ declaration_list %= 'id : type <- expr', lambda s: [(s[1], s[3], s[5])]
 declaration_list %= 'id : type , declaration-list', lambda s: [(s[1], s[3], None)] + s[5]
 declaration_list %= 'id : type <- expr , declaration-list', lambda s: [(s[1], s[3], s[5])] + s[7]
 
-case_list %= 'id : type => expr ;', lambda s: [ast.CaseNode(s[1], s[3], s[5])]
-case_list %= 'id : type => expr ; case-list', lambda s: [ast.CaseNode(s[1], s[3], s[5])] + s[7]
+case_list %= 'id : type => expr ;', lambda s: [(s[1], s[3], s[5])]
+case_list %= 'id : type => expr ; case-list', lambda s: [(s[1], s[3], s[5])] + s[7]
 
 function_call %= 'id ( expr-list )', lambda s: ast.MethodCallNode(s[1], s[3])
 function_call %= 'atom . id ( expr-list )', lambda s: ast.MethodCallNode(s[3], s[5], s[1])
@@ -224,7 +224,7 @@ def attribute_error(s):
 @G.production("case-list -> id : type => expr error")
 def case_list_error(s):
     s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
-    return [ast.CaseNode(s[1], s[3], s[5])]
+    return [(s[1], s[3], s[5])]
 
 
 if __name__ == '__main__':

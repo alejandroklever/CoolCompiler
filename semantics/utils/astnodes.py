@@ -61,14 +61,14 @@ class LetNode(ExprNode):
 class SwitchCaseNode(ExprNode):
     def __init__(self, expr, cases):
         self.expr: ExprNode = expr
-        self.cases: List[CaseNode] = cases
+        self.cases: List[Tuple[str, str, ExprNode]] = cases
 
 
-class CaseNode(ExprNode):
-    def __init__(self, idx, typex, expr):
-        self.id: str = idx
-        self.type: str = typex
-        self.expr: ExprNode = expr
+# class CaseNode(ExprNode):
+#     def __init__(self, idx, typex, expr):
+#         self.id: str = idx
+#         self.type: str = typex
+#         self.expr: ExprNode = expr
 
 
 class AssignNode(ExprNode):

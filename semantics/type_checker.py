@@ -151,20 +151,21 @@ class TypeChecker:
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         self.visit(node.expr, scope)
-        return Type.multi_join([self.visit(case, scope.create_child()) for case in node.cases])
+        types = []
+        for _id, _type, _expr in node.cases:
+            new_scope = scope.create_child()
+            try:
+                if _type != 'SELF_TYPE':
+                    new_scope.define_variable(_id, self.context.get_type(_type))
+                else:
+                    self.errors.append(err.INVALID_CASE_TYPE % _type)
+            except SemanticError as e:
+                new_scope.define_variable(_id, ErrorType())
+                self.errors.append(e.text)
 
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, scope: Scope):
-        try:
-            if node.type != 'SELF_TYPE':
-                scope.define_variable(node.id, self.context.get_type(node.type))
-            else:
-                self.errors.append(err.INVALID_CASE_TYPE % node.type)
-        except SemanticError as e:
-            scope.define_variable(node.id, ErrorType())
-            self.errors.append(e.text)
+            types.append(self.visit(_expr, new_scope))
 
-        return self.visit(node.expr, scope)
+        return Type.multi_join(types)
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):

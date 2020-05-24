@@ -345,15 +345,12 @@ class InferenceChecker:
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         self.visit(node.expr, scope)
-        for case in node.cases:
-            self.visit(case, scope.create_child())
+        for _id, _type, _expr in node.cases:
+            new_scope = scope.create_child()
+            var_info = new_scope.define_variable(_id, self.context.get_type(_type))
+            self.variables[var_info] = VariableInfoNode(var_info.type, var_info)
+            self.visit(_expr, new_scope)
         return AtomNode(self.context.get_type('Object'))  # For now
-
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, scope: Scope):
-        var_info = scope.define_variable(node.id, self.context.get_type(node.type))
-        self.variables[var_info] = VariableInfoNode(var_info.type, var_info)
-        return self.visit(node.expr, scope)
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
@@ -585,17 +582,8 @@ class InferenceTypeSubstitute:
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         self.visit(node.expr, scope)
-        for i, case in enumerate(node.cases):
-            self.visit(case, scope.children[i])
-
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, scope: Scope):
-        var_info = scope.find_variable(node.id)
-        if node.type == 'AUTO_TYPE':
-            if var_info.type == self.context.get_type('AUTO_TYPE'):
-                self.errors.append(err.INFERENCE_ERROR_VARIABLE % node.id)
-            node.type = var_info.type.name
-        self.visit(node.expr, scope)
+        for i, (_id, _type, _expr) in enumerate(node.cases):
+            self.visit(_expr, scope.children[i])
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):

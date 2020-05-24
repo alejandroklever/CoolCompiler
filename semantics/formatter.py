@@ -70,15 +70,14 @@ class CodeBuilder:
 
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, tabs: int = 0):
+        cases = []
+        for _id, _type, _expr in node.cases:
+            expr = self.visit(_expr, tabs + 2)
+            cases.append('\t' * (tabs + 1) + f'{_id} : {_type} =>\n{expr};')
         expr = self.visit(node.expr)
-        cases = '\n'.join(self.visit(case, tabs + 1) for case in node.cases)
+        cases = '\n'.join(cases)
 
         return '\t' * tabs + f'case {expr} of \n{cases}\n' + '\t' * tabs + 'esac'
-
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, tabs: int = 0):
-        expr = self.visit(node.expr, tabs + 1)
-        return '\t' * tabs + f'{node.id} : {node.type} =>\n{expr};'
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, tabs: int = 0):
@@ -182,18 +181,17 @@ class Formatter:
 
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, tabs: int = 0):
+        cases = []
+        for _id, _type, _expr in node.cases:
+            expr = self.visit(_expr, tabs + 3)
+            cases.append('\t' * tabs + f'\\__CaseNode: {_id} : {_type} =>\n{expr}')
         expr = self.visit(node.expr, tabs + 2)
-        cases = '\n'.join(self.visit(case, tabs + 3) for case in node.cases)
+        cases = '\n'.join(cases)
 
         return '\n'.join([
             '\t' * tabs + f'\\__SwitchCaseNode: case <expr> of [<case> ... <case>] esac',
             '\t' * (tabs + 1) + f'\\__case \n{expr} of',
         ]) + '\n' + cases
-
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, tabs: int = 0):
-        expr = self.visit(node.expr, tabs + 1)
-        return '\t' * tabs + f'\\__CaseNode: {node.id} : {node.type} =>\n{expr}'
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, tabs: int = 0):

@@ -103,7 +103,7 @@ class C inherits A { }
 
 class Main inherits IO {
     main () : Object {
-        let a: A <- new C in 
+        let a: A <- new B in 
             case a of
                 x: C => out_string("Is type C.\n");
                 x: B => out_string("Is type B.\n");

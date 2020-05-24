@@ -173,11 +173,28 @@ class Executor:
 
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
-        pass
+        instance = self.visit(node.expr, scope)
 
-    @visitor.when(ast.CaseNode)
-    def visit(self, node: ast.CaseNode, scope: Scope):
-        pass
+        if isinstance(instance, VoidInstance):
+            # RuntimeError
+            pass
+
+        types = [(i, self.context.get_type(t)) for i, (_, t, _) in enumerate(node.cases)
+                 if instance.type.conforms_to(self.context.get_type(t))]
+
+        if not types:
+            # Runtime Error
+            pass
+
+        (index, most_conformable_type), *types = types
+        for i, t in types:
+            if t.conforms_to(most_conformable_type):
+                index, most_conformable_type = i, t
+
+        child_scope = scope.create_child()
+        name, typex, expr = node.cases[index]
+        child_scope.define_variable(name, self.context.get_type(typex)).instance = instance
+        return self.visit(expr, child_scope)
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
