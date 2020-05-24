@@ -129,9 +129,10 @@ class TypeChecker:
 
     @visitor.when(ast.BlockNode)
     def visit(self, node: ast.BlockNode, scope: Scope):
+        child_scope = scope.create_child()
         return_type = ErrorType()
         for expr in node.expressions:
-            return_type = self.visit(expr, scope)
+            return_type = self.visit(expr, child_scope)
         return return_type
 
     @visitor.when(ast.ConditionalNode)

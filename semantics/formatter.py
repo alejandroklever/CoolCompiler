@@ -20,7 +20,7 @@ class CodeBuilder:
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, tabs: int = 0):
-        expr = f' <- {self.visit(node.expr, tabs)}' if node.expr is not None else ''
+        expr = f' <- {self.visit(node.expr, 0)}' if node.expr is not None else ''
         return '\t' * tabs + f'{node.id}: {node.type}{expr};'
 
     @visitor.when(ast.MethodDeclarationNode)

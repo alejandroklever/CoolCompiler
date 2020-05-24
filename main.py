@@ -6,7 +6,7 @@ from semantics.progam_executor import Executor
 from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
 
-program = r"""
+some_program = r"""
 class Main inherits IO {
     a: Int;
 
@@ -23,7 +23,7 @@ class Main inherits IO {
         
         case a of
             x: Int => 
-                x + 2;n 
+                x + 2;
             x: String => 
                 x.concat(" is a String\n");
         esac;
@@ -43,16 +43,14 @@ class Main inherits IO {
 
 inference_program_01 = r"""
 class Point {
-    a: AUTO_TYPE;
-    b: AUTO_TYPE;
+    x: AUTO_TYPE;
+    y: AUTO_TYPE;
 
-    init(x: AUTO_TYPE, y: AUTO_TYPE): AUTO_TYPE {{
-        a <- b;
-        b <- x + y;
-        create_point();
+    init(x0: Int, y0: Int): AUTO_TYPE {{
+        x <- x0;
+        y <- y0;
+        self;
     }};
-    
-    create_point(): AUTO_TYPE { new Point };
 }
 """
 
@@ -98,15 +96,27 @@ class Main inherits IO {
 
 hello_world = r"""
 class Main inherits IO {
-    x : AUTO_TYPE <- 5 + 5;
-
-    main () : IO {{
-        out_int(x);
+    main () : AUTO_TYPE {{
+        --out_int(iterative_fibonacci(5));
+        --out_string("\n");
+        out_int(fibonacci(5));
         out_string("\n");
     }};
     
-    get_x () : AUTO_TYPE {
-        x 
+    fibonacci (n: AUTO_TYPE) : AUTO_TYPE {
+        if n <= 2 then 1 else fibonacci(n - 1) + fibonacci(n - 2) fi
+    };
+    
+    iterative_fibonacci(n: AUTO_TYPE) : AUTO_TYPE {
+        let  i: Int <- 1, n1: Int <- 1, n2: Int <- 1, temp: Int in {
+            while i < n loop {
+                temp <- n2;
+                n2 <- n2 + n1;
+                n1 <- temp;
+                i <- i + 1;
+            } pool;
+            n2;
+        }
     };
 }
 """

@@ -82,6 +82,9 @@ class Instance:
     def get_method(self, name: str) -> Method:
         return self.type.get_method(name)
 
+    def __str__(self):
+        return f'{self.type.name} {self.value}'
+
 
 class VoidInstance(Instance):
     def __init__(self):
@@ -161,11 +164,17 @@ class Executor:
 
     @visitor.when(ast.ConditionalNode)
     def visit(self, node: ast.ConditionalNode, scope: Scope):
-        pass
+        if_instance = self.visit(node.if_expr, scope)
+
+        if if_instance.value:
+            return self.visit(node.then_expr, scope.create_child())
+        return self.visit(node.else_expr, scope.create_child())
 
     @visitor.when(ast.WhileNode)
     def visit(self, node: ast.WhileNode, scope: Scope):
-        pass
+        while self.visit(node.condition, scope).value:
+            self.visit(node.body, scope.create_child())
+        return VoidInstance()
 
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
@@ -193,15 +202,16 @@ class Executor:
 
         new_scope = Scope()
 
-        new_scope.define_variable('self', obj_instance.type).instance = obj_instance
         method = obj_instance.get_method(node.id)
+        new_scope.define_variable('self', obj_instance.type).instance = obj_instance
         for name, typex, arg in zip(method.param_names, method.param_types, node.args):
             new_scope.define_variable(name, typex).instance = self.visit(arg, scope)
 
         self.call_stack.append(self.current_instance)
         self.current_instance = obj_instance
-        self.visit(method.expr, new_scope)
+        output = self.visit(method.expr, new_scope)
         self.current_instance = self.call_stack.pop()
+        return output
 
     @visitor.when(ast.IntegerNode)
     def visit(self, node: ast.IntegerNode, scope: Scope):
