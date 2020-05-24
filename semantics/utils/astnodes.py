@@ -71,13 +71,6 @@ class CaseNode(ExprNode):
         self.expr: ExprNode = expr
 
 
-class VarDeclarationNode(ExprNode):
-    def __init__(self, idx, typex, expr=None):
-        self.id: str = idx
-        self.type: str = typex
-        self.expr: ExprNode = expr
-
-
 class AssignNode(ExprNode):
     def __init__(self, idx, expr):
         self.id: str = idx

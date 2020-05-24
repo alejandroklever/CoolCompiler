@@ -137,21 +137,11 @@ class Executor:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        for _id, _type, _expr in node.declarations:
-            variable_info = scope.define_variable(_id, self.context.get_type(_type))
-            if _expr is not None:
-                variable_info.instance = self.visit(_expr, scope.create_child())
-            else:
-                variable_info.instance = VoidInstance()
-        return self.visit(node.expr, scope.create_child())
+        for _id, _, _expr in node.declarations:
+            instance = self.visit(_expr, scope.create_child()) if _expr is not None else VoidInstance()
+            scope.define_variable(_id, instance.type).instance = instance
 
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-    #     variable_info = scope.define_variable(node.id, self.context.types)
-    #     if node.expr is not None:
-    #         variable_info.instance = self.visit(node.expr, scope)
-    #     else:
-    #         variable_info.instance = VoidInstance()
+        return self.visit(node.expr, scope.create_child())
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):

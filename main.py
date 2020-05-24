@@ -95,11 +95,26 @@ class Main inherits IO {
 """
 
 hello_world = r"""
+class A { }
+
+class B inherits A { }
+
+class C inherits A { }
+
 class Main inherits IO {
-    main () : AUTO_TYPE {{
+    main () : Object {
+        let a: A <- new C in 
+            case a of
+                x: C => out_string("Is type C.\n");
+                x: B => out_string("Is type B.\n");
+            esac
+    };
+    
+    testing_fibonacci(n: Int) : IO {{
         out_string("Iterative Fibonacci : ");
         out_int(iterative_fibonacci(5));
         out_string("\n");
+
         out_string("Recursive Fibonacci : ");
         out_int(recursive_fibonacci(5));
         out_string("\n");

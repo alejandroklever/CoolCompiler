@@ -41,13 +41,6 @@ class CodeBuilder:
         declarations = ('\n' + '\t' * (tabs + 1)).join(declarations)
         return '\t' * tabs + f'let {declarations} in \n{self.visit(node.expr, tabs + 1)}'
 
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
-    #     if node.expr is not None:
-    #         return f'{node.id}: {node.type} <- {self.visit(node.expr)}'
-    #     else:
-    #         return f'{node.id} : {node.type}'
-
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, tabs: int = 0):
         return '\t' * tabs + f'{node.id} <- {self.visit(node.expr)}'
@@ -150,13 +143,6 @@ class Formatter:
         ans = '\t' * tabs + f'\\__LetNode:  let'
         expr = self.visit(node.expr, tabs + 2)
         return f'{ans}\n {declarations}\n' + '\t' * (tabs + 1) + 'in\n' + f'{expr}'
-
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
-    #     if node.expr is not None:
-    #         return '\t' * tabs + f'\\__VarDeclarationNode: {node.id}: {node.type} <-\n{self.visit(node.expr, tabs + 1)}'
-    #     else:
-    #         return '\t' * tabs + f'\\__VarDeclarationNode: {node.id} : {node.type}'
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, tabs: int = 0):

@@ -120,9 +120,6 @@ class DependencyGraph:
             self.dependencies[node] = []
 
     def add_edge(self, node: DependencyNode, other: DependencyNode):
-        if node is None:
-            print('Cheese')
-
         try:
             self.dependencies[node].append(other)
         except KeyError:
@@ -152,7 +149,6 @@ class DependencyGraph:
             if current_node in visited:
                 continue
 
-            print(current_node)
             current_node.update(typex)
             visited.add(current_node)
             queue.extend(self.dependencies[current_node])
@@ -207,9 +203,6 @@ class InferenceChecker:
         for item in node.declarations:
             self.visit(item, scope.create_child())
 
-        for i, (k, v) in enumerate(self.graph.dependencies.items()):
-            print(f'{i} : {k} -> {v}')
-        print()
         self.graph.update_dependencies(default_type=self.context.get_type('Object'))
         InferenceTypeSubstitute(self.context, self.errors).visit(node, scope)
 
@@ -306,21 +299,6 @@ class InferenceChecker:
                     self.graph.add_node(var_info_node)
 
         return self.visit(node.expr, scope.create_child())
-
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-    #     try:
-    #         # Define and get the var_info
-    #         var_info = scope.define_variable(node.id, self.context.get_type(node.type))
-    #     except SemanticError:
-    #         var_info = scope.define_variable(node.id, ErrorType())
-    #     var_info_node = self.variables[var_info] = VariableInfoNode(var_info.name, var_info)
-    #
-    #     expr_node = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
-    #
-    #     if var_info.type.name == 'AUTO_TYPE':
-    #         # Create an edge only if is AutoType
-    #         self.graph.add_edge(expr_node, var_info_node)
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):

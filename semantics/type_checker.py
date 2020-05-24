@@ -108,25 +108,6 @@ class TypeChecker:
 
         return self.visit(node.expr, scope.create_child())
 
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-    #     try:
-    #         var_static_type = self.context.get_type(node.type) if node.type != 'SELF_TYPE' else self.current_type
-    #     except SemanticError as e:
-    #         self.errors.append(e.text)
-    #         var_static_type = ErrorType()
-    #
-    #     if scope.is_local(node.id):
-    #         self.errors.append(err.LOCAL_ALREADY_DEFINED % (node.id, self.current_method.name))
-    #     else:
-    #         scope.define_variable(node.id, var_static_type)
-    #
-    #     expr_type = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
-    #     if expr_type is not None and not expr_type.conforms_to(var_static_type):
-    #         self.errors.append(err.INCOMPATIBLE_TYPES % (expr_type.name, var_static_type.name))
-    #
-    #     return var_static_type
-
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
         var_info = scope.find_variable(node.id)
