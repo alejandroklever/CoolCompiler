@@ -73,10 +73,10 @@ class Instance:
         self.value: Any = value
         self.attribute_values: Dict[str, Instance] = {}
 
-    def set_attribute_value(self, name: str, value: 'Instance') -> None:
+    def set_attribute_instance(self, name: str, value: 'Instance') -> None:
         self.attribute_values[name] = value
 
-    def get_attribute_value(self, name: str) -> 'Instance':
+    def get_attribute_instance(self, name: str) -> 'Instance':
         return self.attribute_values[name]
 
     def get_method(self, name: str) -> Method:
@@ -137,29 +137,34 @@ class Executor:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        for x in node.declarations:
-            self.visit(x, scope)
+        for _id, _type, _expr in node.declarations:
+            variable_info = scope.define_variable(_id, self.context.get_type(_type))
+            if _expr is not None:
+                variable_info.instance = self.visit(_expr, scope.create_child())
+            else:
+                variable_info.instance = VoidInstance()
         return self.visit(node.expr, scope.create_child())
 
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-        variable_info = scope.define_variable(node.id, self.context.types)
-        if node.expr is not None:
-            variable_info.instance = self.visit(node.expr, scope)
-        else:
-            variable_info.instance = VoidInstance()
+    # @visitor.when(ast.VarDeclarationNode)
+    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
+    #     variable_info = scope.define_variable(node.id, self.context.types)
+    #     if node.expr is not None:
+    #         variable_info.instance = self.visit(node.expr, scope)
+    #     else:
+    #         variable_info.instance = VoidInstance()
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
         variable_info = scope.find_variable(node.id)
-        variable_info.value = self.visit(node.expr, scope)
-        return variable_info.value
+        variable_info.instance = self.visit(node.expr, scope)
+        return variable_info.instance
 
     @visitor.when(ast.BlockNode)
     def visit(self, node: ast.BlockNode, scope: Scope):
+        child_scope = scope.create_child()
         instance = None
         for expr in node.expressions:
-            instance = self.visit(expr, scope)
+            instance = self.visit(expr, child_scope)
         return instance
 
     @visitor.when(ast.ConditionalNode)
@@ -231,7 +236,7 @@ class Executor:
         if variable_info is not None:
             return variable_info.instance
         else:
-            return self.current_instance.get_attribute_value(node.lex)
+            return self.current_instance.get_attribute_instance(node.lex)
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):
@@ -247,7 +252,7 @@ class Executor:
         self.call_stack.append(self.current_instance)
         self.current_instance = instance
         for attribute, _ in instance.type.all_attributes():
-            instance.set_attribute_value(attribute.name, self.visit(attribute.expr, Scope()))
+            instance.set_attribute_instance(attribute.name, self.visit(attribute.expr, Scope()))
         self.current_instance = self.call_stack.pop()
         return instance
 

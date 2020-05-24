@@ -97,18 +97,20 @@ class Main inherits IO {
 hello_world = r"""
 class Main inherits IO {
     main () : AUTO_TYPE {{
-        --out_int(iterative_fibonacci(5));
-        --out_string("\n");
-        out_int(fibonacci(5));
+        out_string("Iterative Fibonacci : ");
+        out_int(iterative_fibonacci(5));
+        out_string("\n");
+        out_string("Recursive Fibonacci : ");
+        out_int(recursive_fibonacci(5));
         out_string("\n");
     }};
     
-    fibonacci (n: AUTO_TYPE) : AUTO_TYPE {
-        if n <= 2 then 1 else fibonacci(n - 1) + fibonacci(n - 2) fi
+    recursive_fibonacci (n: AUTO_TYPE) : AUTO_TYPE {
+        if n <= 2 then 1 else recursive_fibonacci(n - 1) + recursive_fibonacci(n - 2) fi
     };
     
     iterative_fibonacci(n: AUTO_TYPE) : AUTO_TYPE {
-        let  i: Int <- 1, n1: Int <- 1, n2: Int <- 1, temp: Int in {
+        let  i: Int <- 2, n1: Int <- 1, n2: Int <- 1, temp: Int in {
             while i < n loop {
                 temp <- n2;
                 n2 <- n2 + n1;

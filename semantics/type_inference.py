@@ -120,6 +120,9 @@ class DependencyGraph:
             self.dependencies[node] = []
 
     def add_edge(self, node: DependencyNode, other: DependencyNode):
+        if node is None:
+            print('Cheese')
+
         try:
             self.dependencies[node].append(other)
         except KeyError:
@@ -149,6 +152,7 @@ class DependencyGraph:
             if current_node in visited:
                 continue
 
+            print(current_node)
             current_node.update(typex)
             visited.add(current_node)
             queue.extend(self.dependencies[current_node])
@@ -203,6 +207,9 @@ class InferenceChecker:
         for item in node.declarations:
             self.visit(item, scope.create_child())
 
+        for i, (k, v) in enumerate(self.graph.dependencies.items()):
+            print(f'{i} : {k} -> {v}')
+        print()
         self.graph.update_dependencies(default_type=self.context.get_type('Object'))
         InferenceTypeSubstitute(self.context, self.errors).visit(node, scope)
 
@@ -281,25 +288,39 @@ class InferenceChecker:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        for item in node.declarations:
-            self.visit(item, scope)
+        for _id, _type, _expr in node.declarations:
+            try:
+                # Define and get the var_info
+                var_info = scope.define_variable(_id, self.context.get_type(_type))
+            except SemanticError:
+                var_info = scope.define_variable(_id, ErrorType())
+            var_info_node = self.variables[var_info] = VariableInfoNode(var_info.type, var_info)
+
+            expr_node = self.visit(_expr, scope.create_child()) if _expr is not None else None
+
+            if var_info.type.name == 'AUTO_TYPE':
+                if expr_node is not None:
+                    # Create an edge only if is AutoType
+                    self.graph.add_edge(expr_node, var_info_node)
+                else:
+                    self.graph.add_node(var_info_node)
 
         return self.visit(node.expr, scope.create_child())
 
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-        try:
-            # Define and get the var_info
-            var_info = scope.define_variable(node.id, self.context.get_type(node.type))
-        except SemanticError:
-            var_info = scope.define_variable(node.id, ErrorType())
-        var_info_node = self.variables[var_info] = VariableInfoNode(var_info.name, var_info)
-
-        expr_node = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
-
-        if var_info.type.name == 'AUTO_TYPE':
-            # Create an edge only if is AutoType
-            self.graph.add_edge(expr_node, var_info_node)
+    # @visitor.when(ast.VarDeclarationNode)
+    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
+    #     try:
+    #         # Define and get the var_info
+    #         var_info = scope.define_variable(node.id, self.context.get_type(node.type))
+    #     except SemanticError:
+    #         var_info = scope.define_variable(node.id, ErrorType())
+    #     var_info_node = self.variables[var_info] = VariableInfoNode(var_info.name, var_info)
+    #
+    #     expr_node = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
+    #
+    #     if var_info.type.name == 'AUTO_TYPE':
+    #         # Create an edge only if is AutoType
+    #         self.graph.add_edge(expr_node, var_info_node)
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
@@ -535,22 +556,32 @@ class InferenceTypeSubstitute:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        for elem in node.declarations:
-            self.visit(elem, scope)
+        child_index = 0
+        for i, (_id, _type, _expr) in enumerate(node.declarations):
+            variable_info = scope.find_variable(_id)
 
-        self.visit(node.expr, scope.children[0])
+            if _expr is not None:
+                self.visit(_expr, scope.children[child_index])
+                child_index += 1
 
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-        variable_info = scope.find_variable(node.id)
+            if _type == 'AUTO_TYPE':
+                if variable_info.type == self.context.get_type('AUTO_TYPE'):
+                    self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % _id)
+                node.declarations[i] = (_id, variable_info.type.name, _expr)
 
-        if node.expr is not None:
-            self.visit(node.expr, scope.children[0])
-
-        if node.type == 'AUTO_TYPE':
-            if variable_info.type == self.context.get_type('AUTO_TYPE'):
-                self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % node.id)
-            node.type = variable_info.type.name
+        self.visit(node.expr, scope.children[child_index])
+    #
+    # @visitor.when(ast.VarDeclarationNode)
+    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
+    #     variable_info = scope.find_variable(node.id)
+    #
+    #     if node.expr is not None:
+    #         self.visit(node.expr, scope.children[0])
+    #
+    #     if node.type == 'AUTO_TYPE':
+    #         if variable_info.type == self.context.get_type('AUTO_TYPE'):
+    #             self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % node.id)
+    #         node.type = variable_info.type.name
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):

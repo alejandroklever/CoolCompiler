@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 Feature = Union['MethodDeclarationNode', 'AttrDeclarationNode']
 
@@ -54,7 +54,7 @@ class BlockNode(ExprNode):
 
 class LetNode(ExprNode):
     def __init__(self, declarations, expr):
-        self.declarations: List[VarDeclarationNode] = declarations
+        self.declarations: List[Tuple[str, str, Optional[ExprNode]]] = declarations
         self.expr: ExprNode = expr
 
 

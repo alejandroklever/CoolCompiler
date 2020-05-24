@@ -32,15 +32,21 @@ class CodeBuilder:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, tabs: int = 0):
-        declarations = '\n'.join(self.visit(declaration, 0) for declaration in node.declarations)
+        declarations = []
+        for _id, _type, _expr in node.declarations:
+            if _expr is not None:
+                declarations.append(f'{_id}: {_type} <- {self.visit(_expr)}')
+            else:
+                declarations.append(f'{_id} : {_type}')
+        declarations = ('\n' + '\t' * (tabs + 1)).join(declarations)
         return '\t' * tabs + f'let {declarations} in \n{self.visit(node.expr, tabs + 1)}'
 
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
-        if node.expr is not None:
-            return f'{node.id}: {node.type} <- {self.visit(node.expr)}'
-        else:
-            return f'{node.id} : {node.type}'
+    # @visitor.when(ast.VarDeclarationNode)
+    # def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
+    #     if node.expr is not None:
+    #         return f'{node.id}: {node.type} <- {self.visit(node.expr)}'
+    #     else:
+    #         return f'{node.id} : {node.type}'
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, tabs: int = 0):
@@ -133,17 +139,24 @@ class Formatter:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, tabs: int = 0):
-        declarations = '\n'.join(self.visit(declaration, tabs + 1) for declaration in node.declarations)
+        declarations = []
+        for _id, _type, _expr in node.declarations:
+            if _expr is not None:
+                declarations.append('\t' * tabs + f'\\__VarDeclarationNode: {_id}: {_type} <-\n{self.visit(_expr, tabs + 1)}')
+            else:
+                declarations.append('\t' * tabs + f'\\__VarDeclarationNode: {_id} : {_type}')
+
+        declarations = '\n'.join(declarations)
         ans = '\t' * tabs + f'\\__LetNode:  let'
         expr = self.visit(node.expr, tabs + 2)
         return f'{ans}\n {declarations}\n' + '\t' * (tabs + 1) + 'in\n' + f'{expr}'
 
-    @visitor.when(ast.VarDeclarationNode)
-    def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
-        if node.expr is not None:
-            return '\t' * tabs + f'\\__VarDeclarationNode: {node.id}: {node.type} <-\n{self.visit(node.expr, tabs + 1)}'
-        else:
-            return '\t' * tabs + f'\\__VarDeclarationNode: {node.id} : {node.type}'
+    # @visitor.when(ast.VarDeclarationNode)
+    # def visit(self, node: ast.VarDeclarationNode, tabs: int = 0):
+    #     if node.expr is not None:
+    #         return '\t' * tabs + f'\\__VarDeclarationNode: {node.id}: {node.type} <-\n{self.visit(node.expr, tabs + 1)}'
+    #     else:
+    #         return '\t' * tabs + f'\\__VarDeclarationNode: {node.id} : {node.type}'
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, tabs: int = 0):
