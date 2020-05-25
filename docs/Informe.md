@@ -23,7 +23,7 @@
 
 PyJapt es un generador de lexer y parser desarrolado por los autores del proyecto que pretende dar una solucion no solo a la creacion de estas piezas del proceso de compilacion, sino tambien permitir una interfaz de manejo de errores sintacticos y lexicograficos personalizados. Para su construccion nos hemos basado en las construcciones realizadas en las clases practicas y nos hemos inspirado en otros generadores de parser para las nuevas funcionalidades como yacc, bison, ply y antlr por ejemplo.
 
-PyJapt gira alrededor del concepto de gramatica. 
+PyJapt gira alrededor del concepto de gramatica.
 
 Para definir los no terminales de la gramatiga utilizamos el metodo `add_non_terminal()` de la clase `Grammar`.
 
@@ -150,7 +150,7 @@ G.add_terminal_error() # Agrega el terminal de error a la gramatica.
 @G.production("instruction -> let id = expr error")
 def attribute_error(s):
     # Con esta linea reportamos el mensaje del error
-    # Como la regla semantica de s es el propio token entonces tenemos acceso
+    # Como la regla semantica de s[5] es el propio token (por ser un terminal) entonces tenemos acceso
     # a su lexema, tipo de token, line y columna.
     s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
 

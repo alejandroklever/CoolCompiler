@@ -396,7 +396,7 @@ class ShiftReduceParser:
                     stack += [lookahead.token_type, lookahead.lex, tag]
                     cursor += 1
                 except KeyError:
-                    # If en error insertion fails then the parsing process enter into a panic mode recovery
+                    # If an error insertion fails then the parsing process enter into a panic mode recovery
                     sys.stderr.write(
                         f'{lookahead.line, lookahead.column} - SyntacticError: ERROR at or near "{lookahead.lex}"\n')
                     while (state, lookahead.token_type) not in self.action:

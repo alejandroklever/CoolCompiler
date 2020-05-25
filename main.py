@@ -105,6 +105,10 @@ class Main inherits IO {
     number: Int <- 5;
 
     main () : Object {
+        0
+    };
+    
+    testing_case() : IO {
         let a: A <- new C in 
             case a of
                 x: B => out_string("Is type B.\n");
