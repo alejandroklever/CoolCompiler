@@ -2,8 +2,8 @@ import inspect
 import time
 
 from semantics.utils import astnodes as ast
-from cmp.parsing import LALR1Parser
-from cmp.pycompiler import Grammar
+from pyjapt.parsing import LALR1Parser
+from pyjapt.grammar import Grammar
 
 G = Grammar()
 
@@ -53,7 +53,7 @@ G.add_terminals('+ - * / < <= = ~')
 ###############
 @G.terminal('id', r'[a-z][a-zA-Z0-9_]*')
 def id_terminal(lexer):
-    lexer.column += len(lexer.token.lex) + 1
+    lexer.column += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
     lexer.token.token_type = lexer.token.lex if lexer.token.lex in keywords_names else lexer.token.token_type
     return lexer.token
@@ -78,7 +78,7 @@ def comment(lexer):
         if s == '\n':
             lexer.lineno += 1
             lexer.column = 0
-        lexer.column = 1
+        lexer.column += 1
     lexer.position += len(lex)
 
 

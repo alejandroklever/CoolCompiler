@@ -128,18 +128,20 @@ class Main inherits IO {
     
     iterative_fibonacci(n: AUTO_TYPE) : AUTO_TYPE {
         let  i: Int <- 2, n1: Int <- 1, n2: Int <- 1, temp: Int in {
-            while i < n loop {
-                temp <- n2;
-                n2 <- n2 + n1;
-                n1 <- temp;
-                i <- i + 1;
-            } pool;
+            while i < n loop
+                let temp: Int <- n2 in {
+                    n2 <- n2 + n1;
+                    n1 <- temp;
+                    i <- i + 1;
+                }
+            pool;
             n2;
         }
     };
 }
 """
 
+verbose = False
 lexer = CoolLexer()
 parser = CoolParser()
 
@@ -158,7 +160,8 @@ if __name__ == '__main__':
     InferenceChecker(context, errors).visit(ast, scope)
     TypeChecker(context, errors).visit(ast, scope)
 
-    print(CodeBuilder().visit(ast))
+    if verbose:
+        print(CodeBuilder().visit(ast))
 
     if not errors:
         print()

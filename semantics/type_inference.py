@@ -497,9 +497,8 @@ class InferenceTypeSubstitute:
                 i += 1
             self.visit(attr, scope)
 
-        for method in methods:
+        for i, method in enumerate(methods, i):
             self.visit(method, scope.children[i])
-            i += 1
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
@@ -548,18 +547,6 @@ class InferenceTypeSubstitute:
                 node.declarations[i] = (_id, variable_info.type.name, _expr)
 
         self.visit(node.expr, scope.children[child_index])
-    #
-    # @visitor.when(ast.VarDeclarationNode)
-    # def visit(self, node: ast.VarDeclarationNode, scope: Scope):
-    #     variable_info = scope.find_variable(node.id)
-    #
-    #     if node.expr is not None:
-    #         self.visit(node.expr, scope.children[0])
-    #
-    #     if node.type == 'AUTO_TYPE':
-    #         if variable_info.type == self.context.get_type('AUTO_TYPE'):
-    #             self.errors.append(err.INFERENCE_ERROR_ATTRIBUTE % node.id)
-    #         node.type = variable_info.type.name
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):

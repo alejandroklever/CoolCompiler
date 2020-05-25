@@ -3,10 +3,10 @@ from typing import List
 
 import fire
 
-from cmp.lexing import Token
+from pyjapt.lexing import Token
 from lexer import CoolLexer
 from parser import CoolParser
-from semantics.semantic import Formatter
+from semantics.formatter import Formatter
 
 lexer = CoolLexer()
 parser = CoolParser()

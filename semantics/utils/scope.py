@@ -263,5 +263,8 @@ class Scope:
     def is_local(self, vname: str) -> bool:
         return vname in self.locals
 
+    def clear(self):
+        self.children = []
+
     def __len__(self):
         return len(self.locals)

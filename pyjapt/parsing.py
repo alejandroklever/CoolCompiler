@@ -1,8 +1,8 @@
 import sys
 
-from cmp.automata import State
-from cmp.pycompiler import Item, RuleList
-from cmp.utils import ContainerSet
+from pyjapt.automata import State
+from pyjapt.grammar import Item, RuleList
+from pyjapt.utils import ContainerSet
 
 
 ##############################

@@ -1,12 +1,167 @@
-<center>
+<div style="text-align: center;">
 
 # Segundo Proyecto de Programacion
 
 ## Inferencia de tipos en el lenguaje de programacion *COOL*, una aproximacion a traves de grafos
 
-</center>
+</div>
 
-El lenguaje de programacion COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje no presenta inferencia de tipos esta es una caracteristica muy util que incorporaremos en un nuestro interprete.
+## Indice
+
+- 0 Estructura del proyecto.
+- 1 Analisis Lexicografico y Sintactico.
+  - 1.1 Generador de lexers y parsers LR "PyJapt".
+  - 1.2 Manejo de errores lexicograficos y sintacticos.
+- 2 Inferencia de tipos.
+  - 2.1 Grafo de dependencias.
+  - 2.2 Casos factibles.
+- 3 Ejecucion.
+
+## 1 Analisis Lexicografico y Sintactico
+
+### 1.1 Generador de lexers y parsers LR "PyJapt"
+
+PyJapt es un generador de lexer y parser desarrolado por los autores del proyecto que pretende dar una solucion no solo a la creacion de estas piezas del proceso de compilacion, sino tambien permitir una interfaz de manejo de errores sintacticos y lexicograficos personalizados. Para su construccion nos hemos basado en las construcciones realizadas en las clases practicas y nos hemos inspirado en otros generadores de parser para las nuevas funcionalidades como yacc, bison, ply y antlr por ejemplo.
+
+PyJapt gira alrededor del concepto de gramatica. 
+
+Para definir los no terminales de la gramatiga utilizamos el metodo `add_non_terminal()` de la clase `Grammar`.
+
+```python
+from pyjapt.grammar import Grammar
+
+G = Grammar()
+
+expr = G.add_non_terminal('expr', start_symbol=True)
+term = G.add_non_terminal('term')
+fact = G.add_non_terminal('fact')
+```
+
+Para definir los terminales de nuestra gramatica usaremos el metodo `add_terminal()` de la clase `Grammar`. Este metodo recibe como primer parametro el nombre del no terminal y como parametro opcional una expresion regular para el analizador lexicografico. En caso de el segundo parametro no se provea la expresion regular sera el nombre literal del terminal.
+
+```python
+plus = G.add_terminals('+')
+minus = G.add_terminals('-')
+star = G.add_terminals('*')
+div = G.add_terminals('/')
+
+num = G.add_terminal('int', regex=r'\d+')
+```
+
+Si tenemos un conjunto de terminales cuya expression regular coincide con su propio nombre podemos encapsularlos con las expression`add_terminals()` de la clase `Grammar`
+
+```python
+plus, minus, star, div = G.add_terminals('+ - * /')
+num = G.add_terminal('int', regex=r'\d+')
+```
+
+Puede darse el caso tambien de que querramos aplicar una regla cuando un terminal especifico sea encontrado, para esto PyJapt nos brinda el decorador de funciones `terminal()` de la clase `Grammar` que recibe el nombre y la expresion regular del terminal. La funcion decorada debe recibir como parametro uan referencia al lexer para poder modificar parametros tales como la fila y la columna de los terminales o la posicion de lectura del parser y retornar un `Token`, en caso de no retornar este token sera ignorado.
+
+```python
+@G.terminal('int', r'\d+')
+def id_terminal(lexer):
+    lexer.column += len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+    lexer.token.lex = int(lexer.token.lex)
+    return lexer.token
+```
+
+Tambien podemos usar esta forma de definicion de terminales para saltarnos ciertos caracteres o tokens.
+
+```python
+##################
+# Ignored Tokens #
+##################
+@G.terminal('newline', r'\n+')
+def newline(lexer):
+    lexer.lineno += len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+    lexer.column = 1
+
+
+@G.terminal('whitespace', r' +')
+def whitespace(lexer):
+    lexer.column += len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+
+
+@G.terminal('tabulation', r'\t+')
+def tab(lexer):
+    lexer.column += 4 * len(lexer.token.lex)
+    lexer.position += len(lexer.token.lex)
+```
+
+Para definir las producciones de nuestra gramatica podemos usar una forma attributada o no atributada:
+
+```python
+# Esta es una gramatica no atributada usando las variable previamente declaradas
+expr %= expr + plus + term
+expr %= expr + minus + term
+expr %= term
+
+term %= term + star + fact
+term %= term + div + fact
+term %= fact
+
+fact %= num
+
+# Un poco mas sencillo...
+# Cada simbolo del string de la produccion debe estar separado por un espacio en blanco
+expr %= 'expr + term'
+expr %= 'expr - term'
+expr %= 'term'
+
+term %= 'term * factor'
+term %= 'term / factor'
+term %= 'fact'
+
+fact %= 'int'
+
+# Esta es una gramatica atributada
+expr %= 'expr + term', lambda s: s[1] + s[3]
+expr %= 'expr - term', lambda s: s[1] + s[3]
+expr %= 'term', lambda s: s[1]
+
+term %= 'term * factor', lambda s: s[1] + s[3]
+term %= 'term / factor', lambda s: s[1] + s[3]
+term %= 'fact', lambda s: s[1]
+
+fact %= 'int', lambda s: int(s[1])
+
+# Tambien podemos atributar una funcion para definir una regla semantica
+# Esta funcion debe recibir como parametro `s` que es una referencia a una
+# lista con las reglas semanticas de cada simbolo de la produccion.
+# Para separar el simbolo de la cabecera del cuerpo de la expresion
+# usamos como segundo simbolo `->`
+@G.production('expr -> expr + term')
+def expr_prod(s):
+    print('Estas sumando una expresion y un termino ;)')
+    return s[1] + s[3]
+```
+
+### 1.2 Manejo de errores lexicograficos y sintacticos
+
+Una parte importante del proceso de parsing es manejar los errores. Para esto podemos hacer el parser a mano e insertar el reporte de errores, ya que los las tecnicas como `Panic Recovery Mode` la cual implementa `PyJapt` solo permiten que no se detenga la ejecucion de nuestro parser, para dar reportes de errores especificos `PyJapt` ofrece la creacion de producciones erroneas y para reportar errores comunes en un lenguaje de programacion como la falta de un `;` un operador desconocido etc. para esto nuestra gramatica debe activar el flag de terminal de error.
+
+```python
+G.add_terminal_error() # Agrega el terminal de error a la gramatica.
+
+# Ejemplo de una posible produccion de error
+@G.production("instruction -> let id = expr error")
+def attribute_error(s):
+    # Con esta linea reportamos el mensaje del error
+    # Como la regla semantica de s es el propio token entonces tenemos acceso
+    # a su lexema, tipo de token, line y columna.
+    s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
+
+    # Con esta linea permitimos que se siga creando una nodo del ast para
+    # poder detectar errores semanticos a pesar de haber errores sintacticos
+    return LetInstruction(s[2], s[4])
+```
+
+## 2 Inferencia de Tipos
+
+COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje no presenta inferencia de tipos esta es una caracteristica muy util que incorporaremos en un nuestro interprete.
 
 Nuestro algoritmo de inferencia de tipos se apoya en el uso basico de la teoria de grafos y en el uso del patron de diseno visitor.
 
@@ -18,7 +173,7 @@ La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable,
 
 ***Salida :*** Un Arbol de Sintaxis Abstracta, Un Contexto y un Scope con tipos bien tagueados.
 
-***Algoritmo :*** Durante el recorrido del AST sera construido un grafo dirigido cuyos nodo encerraran el concepto de las expresiones marcadas com `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea E1 una expresion cuyo tipo estatico es marcado como AUTO_TYPE, y sea E2 una expresion a partir de a cual se puede inferir el tipo de estatico de E1 entonces en el grafo existira la arista <E1, E2>. Una vez construido el arbol Se comenzara una cadena de expansion de tipos estaticos de la forma E1, E2, ..., En donde Ej se infiere de Ei con `1 < j = i + 1 <= n` y E1 es una expresion con tipo estatico definido, al cual llamaremos atomo. Cuando todos los atomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos seran marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
+***Algoritmo :*** Durante el recorrido del AST sera construido un grafo dirigido cuyos nodos encerraran el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresion cuyo tipo estatico es marcado como `AUTO_TYPE`, y sea `E2` una expresion a partir de a cual se puede inferir el tipo de estatico de E1 entonces en el grafo existira la arista `<E2, E1>`. Una vez construido el arbol se comenzara una cadena de expansion de tipos estaticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresion con tipo estatico definido, al cual llamaremos atomo. Cuando todos los atomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos seran marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
 ### Sistemas de nodos
 
@@ -70,7 +225,7 @@ Funcionando de manera analoga para atributos, variables, parametros y retorno de
 
 ### Ejemplos de casos Factibles para la Inferencia
 
-```csharp
+```typescript
 class Main inherits IO {
     function(a: AUTO_TYPE, b: AUTO_TYPE, c: AUTO_TYPE, d: AUTO_TYPE): AUTO_TYPE {
         {
@@ -85,7 +240,7 @@ class Main inherits IO {
 }
 ```
 
-```csharp
+```typescript
 class Point {
     a: AUTO_TYPE;
     b: AUTO_TYPE;
@@ -100,9 +255,9 @@ class Point {
 }
 ```
 
-```csharp
+```typescript
 class Main inherits IO {
-    function(a: AUTO_TYPE): AUTO_TYPE {
+    g(a: AUTO_TYPE): AUTO_TYPE {
         if a < 10 then f(a) else f(b) fi;
     };
 
@@ -112,14 +267,14 @@ class Main inherits IO {
 }
 ```
 
-```csharp
+```typescript
 class Main inherits IO {
 
     b: AUTO_TYPE;
     c: AUTO_TYPE <- "1";
     d: AUTO_TYPE;
 
-    function(a: AUTO_TYPE): AUTO_TYPE {
+    g(a: AUTO_TYPE): AUTO_TYPE {
         {
             b <- a;
             d + 1;
@@ -133,7 +288,7 @@ class Main inherits IO {
 }
 ```
 
-```csharp
+```typescript
 class Ackermann {
     ackermann(m: AUTO_TYPE, n: AUTO_TYPE): AUTO_TYPE {
         if m = 0 then n + 1 else
@@ -147,7 +302,7 @@ class Ackermann {
 
 ### Casos No factibles
 
-No es posible determinar el tipo de una variable, atributo, parametro, o retorno de funcion si para este se cumple el Caso general y su caso especifico correspondiente. En caso de no poderse determinar el tipo por defecto sera tagueado como `AUTO_TYPE`.
+No es posible determinar el tipo de una variable, atributo, parametro, o retorno de funcion si para este se cumple el caso general y su caso especifico correspondiente.
 
 ### Caso general
 
@@ -172,7 +327,7 @@ class Main inherits IO {
 }
 ```
 
-En este ejemplo solo es posible inferir el typo del parametro `a` de la funcion `f`, el resto sera marcado como `Object`.
+En este ejemplo solo es posible inferir el typo del parametro `a` de la funcion `f` y el atributo `b`, el resto sera marcado como `Object`.
 
 ### Casos Particulares
 
@@ -222,7 +377,7 @@ class Main inherits IO {
 }
 ```
 
-#### Expresiones de las cuales es posible determinar su tipo
+#### Expresiones atomicas
 
 - Valores Constantes.
 
@@ -237,3 +392,5 @@ class Main inherits IO {
 - Variables de las cuales se conoce su tipo.
 
 - Bloques donde se puede determinar el tipo de la ultima expresion.
+
+## 3 Ejecucion
