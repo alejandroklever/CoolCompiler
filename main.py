@@ -165,7 +165,7 @@ if __name__ == '__main__':
     TypeChecker(context, errors).visit(ast, scope)
 
     if verbose:
-        print(CodeBuilder().visit(ast))
+        print(CodeBuilder().visit(ast, 0))
 
     if not errors:
         print()

@@ -210,13 +210,13 @@ G.add_terminal_error()
 
 
 @G.production("feature-list -> attribute error feature-list")
-def attribute_error(s):
+def feature_attribute_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return ast.AttrDeclarationNode(s[1], s[3])
 
 
 @G.production("feature-list -> method error feature-list")
-def attribute_error(s):
+def feature_method_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return s[1]
 

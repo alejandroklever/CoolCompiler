@@ -8,7 +8,7 @@ class Main {
 
 class Test {
     test1: Object;
-    
+  
     testing1(): Int {
         2 + 2
     };

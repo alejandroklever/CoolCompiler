@@ -108,7 +108,7 @@ class Executor:
 
     @visitor.when(ast.ProgramNode)
     def visit(self, node: ast.ProgramNode, scope: Scope = None):
-        for i, declaration in enumerate(node.declarations):
+        for declaration in node.declarations:
             self.visit(declaration, None)
 
         execution_node = ast.MethodCallNode('main', [], ast.InstantiateNode('Main'))

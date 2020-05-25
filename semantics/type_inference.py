@@ -113,7 +113,7 @@ class ReturnTypeNode(DependencyNode):
 
 class DependencyGraph:
     def __init__(self):
-        self.dependencies: OrderedDict[DependencyNode, List[DependencyNode]] = OrderedDict()
+        self.dependencies: Dict[DependencyNode, List[DependencyNode]] = OrderedDict()
 
     def add_node(self, node: DependencyNode):
         if node not in self.dependencies:
@@ -128,7 +128,7 @@ class DependencyGraph:
 
     def update_dependencies(self, default_type: Type = None):
         queue = deque(key for key in self.dependencies if isinstance(key, AtomNode))
-        visited = set()
+        visited: Set[DependencyNode] = set()
 
         while queue:
             current_node = queue.popleft()

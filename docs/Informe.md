@@ -13,9 +13,14 @@
   - 1.1 Generador de lexers y parsers LR "PyJapt".
   - 1.2 Manejo de errores lexicograficos y sintacticos.
 - 2 Inferencia de tipos.
-  - 2.1 Grafo de dependencias.
-  - 2.2 Casos factibles.
-- 3 Ejecucion.
+  - 2.1 Algoritmo y Grafo de Dependecias.
+  - 2.2 Nodos de Dependencia.
+  - 2.3 Casos factibles.
+    - 2.3.1 Ejemplos de casos Factibles para la Inferencia.
+  - 2.4 Casos No factibles.
+    - 2.4.1 Casos Generales.
+    - 2.4.2 Casos Particulares.
+  - 2.5 Expresiones atomicas.
 
 ## 1 Analisis Lexicografico y Sintactico
 
@@ -48,7 +53,7 @@ div = G.add_terminals('/')
 num = G.add_terminal('int', regex=r'\d+')
 ```
 
-Si tenemos un conjunto de terminales cuya expression regular coincide con su propio nombre podemos encapsularlos con las expression`add_terminals()` de la clase `Grammar`
+Si tenemos un conjunto de terminales cuya expresion regular coincide con su propio nombre podemos encapsularlos con la funcion `add_terminals()` de la clase `Grammar`
 
 ```python
 plus, minus, star, div = G.add_terminals('+ - * /')
@@ -159,6 +164,32 @@ def attribute_error(s):
     return LetInstruction(s[2], s[4])
 ```
 
+Para reportar errores lexicograficos el procedimiento es bastante similar solo definimos un token que contenga un error, en este ejemplo un comentario multiliena que contiene un final de cadena.
+
+```python
+@G.terminal('comment_error', r'\(\*(.|\n)*$')
+def comment_eof_error(lexer):
+    lexer.contain_errors = True
+    lex = lexer.token.lex
+    for s in lex:
+        if s == '\n':
+            lexer.lineno += 1
+            lexer.column = 0
+        lexer.column = 1
+    lexer.position += len(lex)
+    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: EOF in comment')
+```
+
+Y para reportar errores generales durante el proceso de tokenizacion podemos usar el decorador `lexical_error`
+
+```python
+@G.lexical_error
+def lexical_error(lexer):
+    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"')
+    lexer.column += 1
+    lexer.position += 1
+```
+
 ## 2 Inferencia de Tipos
 
 COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje no presenta inferencia de tipos esta es una caracteristica muy util que incorporaremos en un nuestro interprete.
@@ -167,7 +198,7 @@ Nuestro algoritmo de inferencia de tipos se apoya en el uso basico de la teoria 
 
 La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable, parametro de funcion o retorno de funcion el primer tipo que le puede ser asignado, modificando en el arbol de sintaxis abstracta el string `AUTO_TYPE` por el nombre del tipo correspondiente y asignando los tipos correspondientes en el contexto y el ambito en que seon declarados.
 
-### El algoritmo
+### 2.1 Algoritmo y Grafo de Dependecias
 
 ***Entrada :*** Un arbol de sintaxis abstracta, un contexto con todos los tipos declarados en el programa de COOL.
 
@@ -175,11 +206,9 @@ La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable,
 
 ***Algoritmo :*** Durante el recorrido del AST sera construido un grafo dirigido cuyos nodos encerraran el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresion cuyo tipo estatico es marcado como `AUTO_TYPE`, y sea `E2` una expresion a partir de a cual se puede inferir el tipo de estatico de E1 entonces en el grafo existira la arista `<E2, E1>`. Una vez construido el arbol se comenzara una cadena de expansion de tipos estaticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresion con tipo estatico definido, al cual llamaremos atomo. Cuando todos los atomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos seran marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
-### Sistemas de nodos
+### 2.2 Nodos de Dependencia
 
 Cada nodo del grafo sera una abstraccion de un concepto en el que se use un tagueo explicito de `AUTO_TYPE` y tendra las referencias a las partes del proceso de semantica del programa, ademas de que cada nodo contara con un metodo `update(type)` el cual actualiza el tipo estatico de estos conceptos.
-
-### Jerarquia de nodos
 
 ```python
 class DependencyNode:
@@ -207,7 +236,7 @@ class VariableInfoNode(DependencyNode):
     pass
 ```
 
-### Casos factibles
+### 2.3 Casos factibles
 
 Funcionando de manera analoga para atributos, variables, parametros y retorno de funciones. Explicado de forma recursiva puede ser visto como:
 
@@ -223,10 +252,14 @@ Funcionando de manera analoga para atributos, variables, parametros y retorno de
 
 - Para los retornos de funciones, su tipo sera determinado con su expresion y los llamados a dicha funcion a traves de una operacion de dispatch.
 
-### Ejemplos de casos Factibles para la Inferencia
+- En las expresiones if-then-else o case-of asignan automaticamente el tipo `Object` por el momento debido a la complejidad que supone la operacion `join` en el los case y en las clausulas then-else.
+
+### 2.3.1 Ejemplos de casos Factibles para la Inferencia
+
+En este caso la expresion `d + 1` desambigua a `d` en un `Int` y luego `c` se infiere de `d`, `b` se infiere de `c`, `a` se infiere de `b` y el retorno de la funcion de infiere de `a`. Quedando todos los parametros y el retorno de la funcion marcados como `Int`.
 
 ```typescript
-class Main inherits IO {
+class Main {
     function(a: AUTO_TYPE, b: AUTO_TYPE, c: AUTO_TYPE, d: AUTO_TYPE): AUTO_TYPE {
         {
             a <- b;
@@ -234,11 +267,13 @@ class Main inherits IO {
             c <- d;
             d <- a;
             d + 1;
-            if a < 10 then a else b fi;
+            a;
         }
     };
 }
 ```
+
+Similar al caso anterior pero enesta ocacion incluyendo atributos, la expresion los `x + y` infiere a los parametros `x` y `y` como `Int` y tambien al atributo `b`, `a` se infiere de `b`. El tipo de retorno de `create_point()` se infiere de su porpia cuerpo con la expression `new Point` y esta a su vez infiere el tipo de retorno de `init()`.
 
 ```typescript
 class Point {
@@ -255,41 +290,20 @@ class Point {
 }
 ```
 
-```typescript
-class Main inherits IO {
-    g(a: AUTO_TYPE): AUTO_TYPE {
-        if a < 10 then f(a) else f(b) fi;
-    };
+Probando con funciones recursivas tenemos el caso de fibonacci tipo de `n` se infiere al ser usado en las expresiones `n <= 2`, `n - 1`, `n - 2`, las cuales lo marcan como `Int`, `fibonacci(n - 1) + fibonacci(n - 2)` marca al retorno de la funcion como `Int` y y la expresion if-then-else lo marca como `Object`. en este ultimo caso la expresion `fibonacci(n - 1) + fibonacci(n - 2)` termina de analizarse primero que la expresion if-then-else por lo cual el tipo de retorno sera `Int` el cual fue el primero que se definio, lo cual demuestra que el orden en el que se analizan las inferencias importan de las inferencias importan.
 
-    f(a :AUTO_TYPE): AUTO_TYPE{
-        if a < 3 then 1 else f(a - 1) + f(a - 2) fi
+```typescript
+class Main {
+    fibonacci(n: AUTO_TYPE): AUTO_TYPE {
+        if n <= 2 then 1 else fibonacci(n - 1) + fibonacci(n - 2) fi
     };
 }
 ```
 
-```typescript
-class Main inherits IO {
-
-    b: AUTO_TYPE;
-    c: AUTO_TYPE <- "1";
-    d: AUTO_TYPE;
-
-    g(a: AUTO_TYPE): AUTO_TYPE {
-        {
-            b <- a;
-            d + 1;
-            if a < 10 then f(a) else f(b) fi;
-        }
-    };
-
-    f(a: AUTO_TYPE): AUTO_TYPE {
-        if a < 3 then 1 else f(a - 1) + f(a - 2) fi
-    };
-}
-```
+El caso de Ackerman es bastante interesante, en nuestro algoritmo importa el orden en el que fueron definidas las dependencias. `m` y `n` son inferibles como `Int` a partir de las expresiones `n + 1` y `m - 1` respectivamente, y el tipo de retorno de `ackermann` en inferible por `n` al ser usado como segundo parametro en un llamado de si mismo, por lo cual sera `Int`. La influencia de la expresion if-then-else se ve anulada por el orden de inferencia.
 
 ```typescript
-class Ackermann {
+class Main {
     ackermann(m: AUTO_TYPE, n: AUTO_TYPE): AUTO_TYPE {
         if m = 0 then n + 1 else
             if n = 0 then ackermann(m - 1, 1) else
@@ -300,16 +314,16 @@ class Ackermann {
 }
 ```
 
-### Casos No factibles
+### 2.4 Casos No factibles
 
 No es posible determinar el tipo de una variable, atributo, parametro, o retorno de funcion si para este se cumple el caso general y su caso especifico correspondiente.
 
-### Caso general
+### 2.4.1 Casos generales
 
 El tipo es utilizado en expresiones que no permiten determinar su tipo, o solo se logra determinar que poseen el mismo tipo que otras variables, atributos, parametros o retorno de funciones de las cuales tampoco se puede determinar el mismo.
 
-```csharp
-class Main inherits IO {
+```typescript
+class Main {
     b: AUTO_TYPE;
     c: AUTO_TYPE;
 
@@ -321,19 +335,19 @@ class Main inherits IO {
         }
     };
 
-    f(a: AUTO_TYPE): AUTO_TYPE {
-        if a < 3 then 1 else f(a - 1) fi
+    factorial(n: AUTO_TYPE): AUTO_TYPE {
+        if n = 1 then 1 else n * factorial(n - 1) fi
     };
 }
 ```
 
-En este ejemplo solo es posible inferir el typo del parametro `a` de la funcion `f` y el atributo `b`, el resto sera marcado como `Object`.
+En este ejemplo solo es posible inferir el typo del parametro `n` de la funcion `factorial`, su tipo de retorno, el parametro `a` de la funcion `function`, su tipo de retorno y el atributo `b` de la clase `Main`, el resto sera marcado como `Object`.
 
-### Casos Particulares
+### 2.4.2 Casos Particulares
 
 ***Para variables:*** si estas no son utilizadas en el ambito en que son marcadas como `Object`.
 
-```csharp
+```typescript
 class Main inherits IO {
     function(): Int {
         let a:AUTOTYPE, b:AUTO_TYPE in {
@@ -343,9 +357,9 @@ class Main inherits IO {
 }
 ```
 
-***Para parametros:*** si dentro del cuerpo de la funcion estas no son utilizadas y no existe otra funcion que llame a esta con argumetnos con tipado estatico definidos seran marcadas como `Object`:
+***Para parametros:*** si dentro del cuerpo de la funcion estas no son utilizadas y no existe otra funcion que llame a esta con argumentos con tipado estatico definidos seran marcadas como `Object`:
 
-```csharp
+```typescript
 class Main inherits IO {
     f(a: AUTO_TYPE): Int{
         1
@@ -355,7 +369,7 @@ class Main inherits IO {
 
 ***Para atributos:*** si no es posible determinar el tipo de la expresion de inicializacion o si dentro del cuerpo de todas las funciones de su clase correspondiente este no son utilizadas, seran marcadas como `Objects`.
 
-```csharp
+```typescript
 class Main inherits IO {
 
     b: AUTO_TYPE <- c;
@@ -369,7 +383,7 @@ class Main inherits IO {
 
 ***Para el retorno de funciones:*** si no es posible determinar el tipo de su expresion.
 
-```csharp
+```typescript
 class Main inherits IO {
     f(a: Int): AUTO_TYPE{
         if a<3 then a else f(a-3) fi
@@ -377,7 +391,7 @@ class Main inherits IO {
 }
 ```
 
-#### Expresiones atomicas
+### 2.5 Expresiones atomicas
 
 - Valores Constantes.
 
@@ -392,5 +406,3 @@ class Main inherits IO {
 - Variables de las cuales se conoce su tipo.
 
 - Bloques donde se puede determinar el tipo de la ultima expresion.
-
-## 3 Ejecucion
