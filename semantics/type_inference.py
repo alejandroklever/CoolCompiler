@@ -216,7 +216,7 @@ class InferenceChecker:
         for attr in attrs:
             self.visit(attr, scope)
 
-        for i, method in enumerate(methods):
+        for method in methods:
             self.visit(method, scope.create_child())
 
     @visitor.when(ast.AttrDeclarationNode)

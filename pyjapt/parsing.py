@@ -309,6 +309,7 @@ class ShiftReduceParser:
     SHIFT = 'SHIFT'
     REDUCE = 'REDUCE'
     OK = 'OK'
+    conatins_errors = False
 
     def __init__(self, G):
         self.G = G
@@ -317,7 +318,6 @@ class ShiftReduceParser:
         self.follows = compute_follows(self.augmented_G, self.firsts)
         self.automaton = self._build_automaton()
         self.conflicts = []
-        self.errors = []
 
         self.action = {}
         self.goto = {}
@@ -382,18 +382,22 @@ class ShiftReduceParser:
         cursor = 0
 
         while True:
-            state = stack[-1]
+            if cursor >= len(tokens):
+                return
+
+            state = stack[-1]    
             lookahead = tokens[cursor]
 
             ##########################
             # Error Handling Section #
             ##########################
             if (state, lookahead.token_type) not in self.action:
+                self.conatins_errors = True
                 try:
                     # Try to insert an error token into the stack
                     action, tag = self.action[state, self.G.ERROR]
                     lookahead.token_type = self.G.ERROR
-                    stack += [lookahead.token_type, lookahead.lex, tag]
+                    stack += [lookahead.token_type, lookahead, tag]
                     cursor += 1
                 except KeyError:
                     # If an error insertion fails then the parsing process enter into a panic mode recovery
@@ -402,7 +406,7 @@ class ShiftReduceParser:
                     while (state, lookahead.token_type) not in self.action:
                         cursor += 1
                         if cursor >= len(tokens):
-                            return None
+                            return
                         lookahead = tokens[cursor]
                 continue
             #######

@@ -35,7 +35,7 @@ class TypeBuilder:
 
         if node.parent is not None:
             if node.parent in ("Int", "String", "Bool", "SELF_TYPE"):
-                self.errors.append(err.INVALID_PARENT_TYPE)
+                self.errors.append(err.INVALID_PARENT_TYPE % (node.id, node.parent))
 
             try:
                 self.current_type.set_parent(self.context.get_type(node.parent))

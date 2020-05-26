@@ -1,47 +1,32 @@
 from lexer import CoolLexer
 from parser import CoolParser
-from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
+from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering, Formatter)
 from semantics.formatter import CodeBuilder
 from semantics.progam_executor import Executor
 from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
 
-some_program = r"""
-class Main inherits IO {
-    a: Int;
+detecting_errors = r"""
+class A {
+    a (n: Int) : Int { 0 };
+}
 
-    main(): IO {{
-        let a: Int <- 2 in a;
-        
-        a <- 2;
-        
-        new IO;
-        
-        while true loop
-            0
-        pool;
-        
-        case a of
-            x: Int => 
-                x + 2;
-            x: String => 
-                x.concat(" is a String\n");
-        esac;
-        
-        out_string("Hello, World.\n");
-    }};
+class B inherits A {
+    a (x: String) : String { 1 };
+}
 
-    fibonacci(n: AUTO_TYPE): Int {
-        if n <= 2 
-        then 
-            0 
-        else 
-            fibonacci(n - 1) + fibonacci(n - 2) fi
+class Main {
+    x: Int;
+
+    main (): Object {
+        0
     };
 }
 """
 
 inference_program_01 = r"""
+class Main { main (): Object { 0 }; }
+
 class Point {
     x: AUTO_TYPE;
     y: AUTO_TYPE;
@@ -55,6 +40,8 @@ class Point {
 """
 
 inference_program_02 = r"""
+class Main { main (): Object { 0 }; }
+
 class Ackermann {
     ackermann(m: AUTO_TYPE, n: AUTO_TYPE): AUTO_TYPE {
         if m = 0 then n + 1 else
@@ -68,6 +55,8 @@ class Ackermann {
 
 inference_program_03 = r"""
 class Main {
+    main (): Object { 0 };
+
     f(a: AUTO_TYPE, b: AUTO_TYPE): AUTO_TYPE {
         if a = 1 then b else
             g(a + 1, b / 1) 
@@ -82,19 +71,7 @@ class Main {
 }
 """
 
-inference_program_04 = r"""
-class Main inherits IO {
-    f(a: Int): Int {
-        g(a)
-    };
-
-    g(a: AUTO_TYPE): Int{
-        1
-    };
-}
-"""
-
-hello_world = r"""
+execution_program_01 = r"""
 class A { }
 
 class B inherits A { }
@@ -150,27 +127,28 @@ lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
-    tokens = lexer(hello_world)
+    tokens = lexer(detecting_errors)
     ast = parser(tokens)
 
-    context = Context()
-    errors = []
-    scope = Scope()
+    if ast is not None:
+        context = Context()
+        errors = []
+        scope = Scope()
 
-    TypeCollector(context, errors).visit(ast)
-    TypeBuilder(context, errors).visit(ast)
-    topological_ordering(ast, context, errors)
-    OverriddenMethodChecker(context, errors).visit(ast)
-    InferenceChecker(context, errors).visit(ast, scope)
-    TypeChecker(context, errors).visit(ast, scope)
+        TypeCollector(context, errors).visit(ast)
+        TypeBuilder(context, errors).visit(ast)
+        topological_ordering(ast, context, errors)
+        OverriddenMethodChecker(context, errors).visit(ast)
+        InferenceChecker(context, errors).visit(ast, scope)
+        TypeChecker(context, errors).visit(ast, scope)
 
-    if verbose:
-        print(CodeBuilder().visit(ast, 0))
+        if verbose:
+            print(CodeBuilder().visit(ast, 0))
 
-    if not errors:
-        print()
-        Executor(context, errors).visit(ast, Scope())
-        print('Program finished...')
+        if not errors:
+            print()
+            Executor(context, errors).visit(ast, Scope())
+            print('Program finished...')
 
-    for error in errors:
-        print(error)
+        for error in errors:
+            print(error)

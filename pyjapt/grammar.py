@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from typing import List, FrozenSet, Optional, Tuple, Iterable, Callable, Dict
 
 from .lexing import Lexer, Token
@@ -604,5 +605,5 @@ class RuleList:
     def warning(self):
         pass
 
-    def error(self):
-        pass
+    def error(self, message):
+        sys.stderr.write(message + '\n')

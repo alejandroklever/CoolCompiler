@@ -31,9 +31,6 @@ class TypeChecker:
     def visit(self, node: ast.ClassDeclarationNode, scope: Scope):
         self.current_type = self.context.get_type(node.id)
 
-        if node.parent is not None and node.parent == 'SELF_TYPE':
-            self.errors.append(err.INVALID_PARENT_TYPE % (node.id, node.parent))
-
         attrs = [feature for feature in node.features if isinstance(feature, ast.AttrDeclarationNode)]
         methods = [feature for feature in node.features if isinstance(feature, ast.MethodDeclarationNode)]
 
