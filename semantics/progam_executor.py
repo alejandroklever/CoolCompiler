@@ -1,8 +1,15 @@
 from typing import List, Dict, Any
 
 import semantics.utils.astnodes as ast
+import semantics.utils.errors as err
 import semantics.visitor as visitor
 from semantics.utils.scope import Context, Type, Method, Scope
+
+
+class ExecutionError(Exception):
+    @property
+    def text(self):
+        return self.args[0]
 
 
 def abort(obj, context):
@@ -95,9 +102,8 @@ class VoidInstance(Instance):
 
 
 class Executor:
-    def __init__(self, context: Context, errors: List[str] = []):
+    def __init__(self, context: Context):
         self.context: Context = context
-        self.errors: List[str] = errors
         self.current_type: Type = None
         self.current_instance: Instance = None
         self.call_stack: list = []
@@ -298,8 +304,11 @@ class Executor:
 
     @visitor.when(ast.DivNode)
     def visit(self, node: ast.DivNode, scope: Scope):
-        value = self.visit(node.left, scope).value / self.visit(node.right, scope).value
-        return Instance(self.context.get_type('Int'), value)
+        try:
+            value = self.visit(node.left, scope).value / self.visit(node.right, scope).value
+            return Instance(self.context.get_type('Int'), value)
+        except ZeroDivisionError:
+            raise ExecutionError(err.DIVIDE_BY_ZERO)
 
     @visitor.when(ast.LessEqualNode)
     def visit(self, node: ast.LessEqualNode, scope: Scope):

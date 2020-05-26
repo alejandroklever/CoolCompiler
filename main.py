@@ -1,25 +1,27 @@
+import sys
+
 from lexer import CoolLexer
 from parser import CoolParser
 from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering, Formatter)
 from semantics.formatter import CodeBuilder
-from semantics.progam_executor import Executor
+from semantics.progam_executor import Executor, ExecutionError
 from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
 
 detecting_errors = r"""
-class A {
+(* class A {
     a (n: Int) : Int { 0 };
 }
 
 class B inherits A {
     a (x: String) : String { 1 };
-}
+} *)
 
 class Main {
     x: Int;
 
     main (): Object {
-        0
+        1 / 0
     };
 }
 """
@@ -143,12 +145,14 @@ if __name__ == '__main__':
         TypeChecker(context, errors).visit(ast, scope)
 
         if verbose:
-            print(CodeBuilder().visit(ast, 0))
+            print(CodeBuilder().visit(ast, 0), '\n')
 
         if not errors:
-            print()
-            Executor(context, errors).visit(ast, Scope())
-            print('Program finished...')
+            try:
+                Executor(context).visit(ast, Scope())
+                print('Program finished...')
+            except ExecutionError as e:
+                sys.stderr.write(e.text + '\n')
 
         for error in errors:
-            print(error)
+            sys.stderr.write(error + '\n')

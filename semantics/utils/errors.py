@@ -20,3 +20,6 @@ INFERENCE_ERROR_ATTRIBUTE = 'InferenceError: Cannot infer type for attribute "%s
 INFERENCE_ERROR_PARAMETER = 'InferenceError: Cannot infer type for parameter "%s".'
 INFERENCE_ERROR_VARIABLE = 'InferenceError: Cannot infer type for variable "%s".'
 INFERENCE_ERROR_METHOD = 'InferenceError: Cannot infer return type for method "%s".'
+
+
+DIVIDE_BY_ZERO = 'ZeroDivisionError: Division by zero.'
