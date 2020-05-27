@@ -182,8 +182,7 @@ class Executor:
         instance = self.visit(node.expr, scope)
 
         if isinstance(instance, VoidInstance):
-            # RuntimeError
-            pass
+            raise ExecutionError()
 
         types = [(i, self.context.get_type(t)) for i, (_, t, _) in enumerate(node.cases)
                  if instance.type.conforms_to(self.context.get_type(t))]
@@ -205,6 +204,9 @@ class Executor:
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
         obj_instance = self.visit(node.obj, scope)
+
+        if isinstance(obj_instance, VoidInstance):
+            raise ExecutionError(err.VOID_EXPRESSION)
 
         if obj_instance.type.conforms_to(self.context.get_type('Object')) and ('Object', node.id) in defaults:
             args = (obj_instance,) + tuple(self.visit(arg, scope) for arg in node.args) + (self.context,)

@@ -23,3 +23,4 @@ INFERENCE_ERROR_METHOD = 'InferenceError: Cannot infer return type for method "%
 
 
 DIVIDE_BY_ZERO = 'ZeroDivisionError: Division by zero.'
+VOID_EXPRESSION = 'VoidReferenceError: Object reference not set to an instance of an object.'

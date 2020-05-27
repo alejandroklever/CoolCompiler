@@ -21,7 +21,11 @@ class Main {
     x: Int;
 
     main (): Object {
-        1 / 0
+        let a: Main in a.f()
+    };
+
+    f() : Int {
+        0
     };
 }
 """
