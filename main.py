@@ -1,12 +1,12 @@
 import sys
 
-from lexer import CoolLexer
-from parser import CoolParser
-from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering, Formatter)
+from lexertab import CoolLexer
+from parsertab import CoolParser
+from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
 from semantics.formatter import CodeBuilder
 from semantics.progam_executor import Executor, ExecutionError
-from semantics.utils.scope import Context, Scope
 from semantics.type_inference import InferenceChecker
+from semantics.utils.scope import Context, Scope
 
 detecting_errors = r"""
 (* class A {
@@ -133,6 +133,7 @@ lexer = CoolLexer()
 parser = CoolParser()
 
 if __name__ == '__main__':
+
     tokens = lexer(detecting_errors)
     ast = parser(tokens)
 

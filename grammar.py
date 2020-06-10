@@ -226,6 +226,7 @@ def case_list_error(s):
     s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
     return [(s[1], s[3], s[5])]
 
+
 @G.production("block -> expr error")
 def block_single_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")

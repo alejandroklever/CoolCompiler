@@ -50,10 +50,10 @@ class LRParserSerializer:
         action, goto = LRParserSerializer._build_parsing_tables(parser, grammar_variable_name)
         content = PARSER_TEMPLATE % (grammar_module_name, grammar_variable_name, parser_class_name, action, goto)
         try:
-            with open('parser.py', 'x') as f:
+            with open('parsertab.py', 'x') as f:
                 f.write(content)
         except FileExistsError:
-            with open('parser.py', 'w') as f:
+            with open('parsertab.py', 'w') as f:
                 f.write(content)
 
     @staticmethod
@@ -111,8 +111,8 @@ class LexerSerializer:
         )
 
         try:
-            with open('lexer.py', 'x') as f:
+            with open('lexertab.py', 'x') as f:
                 f.write(content)
         except FileExistsError:
-            with open('lexer.py', 'w') as f:
+            with open('lexertab.py', 'w') as f:
                 f.write(content)
