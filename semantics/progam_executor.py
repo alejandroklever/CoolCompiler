@@ -182,14 +182,13 @@ class Executor:
         instance = self.visit(node.expr, scope)
 
         if isinstance(instance, VoidInstance):
-            raise ExecutionError()
+            raise ExecutionError(err.VOID_EXPRESSION)
 
         types = [(i, self.context.get_type(t)) for i, (_, t, _) in enumerate(node.cases)
                  if instance.type.conforms_to(self.context.get_type(t))]
 
         if not types:
-            # Runtime Error
-            pass
+            raise ExecutionError(err.CASE_OF_ERROR)
 
         (index, most_conformable_type), *types = types
         for i, t in types:
