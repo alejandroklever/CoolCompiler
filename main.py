@@ -4,7 +4,7 @@ from lexertab import CoolLexer
 from parsertab import CoolParser
 from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
 from semantics.formatter import CodeBuilder
-from semantics.progam_executor import Executor, ExecutionError
+from semantics.execution import Executor, ExecutionError
 from semantics.type_inference import InferenceChecker
 from semantics.utils.scope import Context, Scope
 
@@ -131,17 +131,21 @@ class Main inherits IO {
 syntactic_errors = """
 class Main {
     a: Int
+    
     b: String
+    
     main () : Object { let a: Int <- "" in 0 }
+    
     errors() : Object {
         case a of
             x: Int => (new IO).out_int(x)
+            y: String => (new IO).out_string(x)
         esac
     }
 }
 """
 
-verbose = sys.argv[1] if len(sys.argv) > 1 else False
+verbose = bool(sys.argv[1]) if len(sys.argv) > 1 else False
 lexer = CoolLexer()
 parser = CoolParser(verbose)
 

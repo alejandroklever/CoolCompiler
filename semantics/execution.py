@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 import semantics.utils.astnodes as ast
 import semantics.utils.errors as err
@@ -17,7 +17,7 @@ def abort(obj, context):
     exit()
 
 
-def ccopy(obj, context) -> None:
+def copy(obj, context):
     x_copy = Instance(obj.type, obj.value if obj.type.name in ('Int', 'String', 'Bool') else None)
     x_copy.attribute_values = obj.attribute_values
     return x_copy
@@ -59,7 +59,7 @@ def substr(obj, i, l, context):
 
 defaults = {
     ('Object', 'abort'): abort,
-    ('Object', 'copy'): ccopy,
+    ('Object', 'copy'): copy,
     ('Object', 'type_name'): type_name,
     ('IO', 'out_string'): out_string,
     ('IO', 'out_int'): out_int,

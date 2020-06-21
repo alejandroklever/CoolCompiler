@@ -1,14 +1,14 @@
 """The type inference algorithm consist in a dependency di-graph with special nodes to handle the behavior of the
 updates of components in the code and solve it in the `context`. For that we crate an structure called
 DependencyGraph where we can create nodes as an structure called DependencyNode and arcs between them, and arc e =
-<x,y> where x and y are dependency nodes means that the type of node y in inferred by the type of node x,
+<x,y> where x and y are dependency nodes means that the type of node y is inferred by the type of node x,
 so for solve the type of y we need first to infer the type of x. For this operation we need some basic nodes that
 only contains the type of the node called AtomNode and in the digraph formation an AtomNode is never inferred from
-another node. The DependencyGraph consist in a dictionary[node, adjacency list] this adjacency has an declaration
-order an this is fundamental for the inference solution algorithm. If we have a case {x : [y, z]} where x, y,
+another node. The DependencyGraph consist in a dictionary[node, adjacency list] this adjacency has a declaration
+order and this is fundamental for the inference solution algorithm. If we have a case {x : [y, z]} where x, y,
 z are nodes then the algorithm will determinate the type of y and all it dependencies before to start with z (a
-simple BFS). The order in the adjacency list is the same appearance order in the program. At the end of the algorithm
-all node that cannot solve it type will be tagged as `Object`.
+simple DFS). The order in the adjacency list is the same appearance order in the program. At the end of the algorithm
+all nodes that cannot solve it type will be tagged as `Object`.
 
 DependencyNode hierarchy
     AtomNode
@@ -135,6 +135,9 @@ class DependencyGraph:
             if current_node in visited:
                 continue
             self.update_dependencies_of(current_node, current_node.type, visited)
+
+        for k, v in self.dependencies.items():
+            print(k, ':', v)
 
         if default_type is not None:
             for node in self.dependencies:
@@ -363,6 +366,11 @@ class InferenceChecker:
             param_nodes, return_node = self.methods[owner.name, method.name]
             for i, arg in enumerate(node.args):
                 arg_node = self.visit(arg, scope)
+
+                if arg_node is None:
+                    # Possible error
+                    continue
+
                 if isinstance(arg_node, AtomNode):
                     if param_nodes[i].type.name == 'AUTO_TYPE':
                         self.graph.add_edge(arg_node, param_nodes[i])
@@ -402,7 +410,7 @@ class InferenceChecker:
             else:
                 return AtomNode(var_info.type)
         else:
-            pass
+            return None
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):
