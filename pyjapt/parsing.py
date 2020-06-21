@@ -1,7 +1,8 @@
 import sys
 
 from pyjapt.automata import State
-from pyjapt.grammar import Item, RuleList
+from pyjapt.grammar import Item, RuleList, Symbol
+from pyjapt.lexing import Token
 from pyjapt.utils import ContainerSet
 
 
@@ -309,15 +310,16 @@ class ShiftReduceParser:
     SHIFT = 'SHIFT'
     REDUCE = 'REDUCE'
     OK = 'OK'
-    conatins_errors = False
+    contains_errors = False
 
-    def __init__(self, G):
+    def __init__(self, G, verbose=False):
         self.G = G
         self.augmented_G = G.augmented_grammar(True)
         self.firsts = compute_firsts(self.augmented_G)
         self.follows = compute_follows(self.augmented_G, self.firsts)
         self.automaton = self._build_automaton()
         self.conflicts = []
+        self.verbose = verbose
 
         self.action = {}
         self.goto = {}
@@ -378,6 +380,7 @@ class ShiftReduceParser:
         :param tokens: List[Token]
         :return: Any
         """
+        inserted_error = False
         stack: list = [0]  # The order in stack is [init state] + [symbol, rule, state, ...]
         cursor = 0
 
@@ -385,30 +388,39 @@ class ShiftReduceParser:
             if cursor >= len(tokens):
                 return
 
-            state = stack[-1]    
+            state = stack[-1]
             lookahead = tokens[cursor]
+
+            if self.verbose:
+                prev = ' '.join([s.name for s in stack if isinstance(s, Symbol)])
+                post = ' '.join([tokens[i].lex for i in range(cursor, len(tokens))])
+                print(f'{prev} <-> {post}')
+                print()
 
             ##########################
             # Error Handling Section #
             ##########################
             if (state, lookahead.token_type) not in self.action:
-                self.conatins_errors = True
-                try:
-                    # Try to insert an error token into the stack
-                    action, tag = self.action[state, self.G.ERROR]
-                    lookahead.token_type = self.G.ERROR
-                    stack += [lookahead.token_type, lookahead, tag]
-                    cursor += 1
-                except KeyError:
+                self.contains_errors = True
+
+                if (state, self.G.ERROR) in self.action:
+                    if self.verbose:
+                        print(f'Inserted error token {lookahead,}')
+
+                    inserted_error = True
+                    lookahead = Token(lookahead.lex, self.G.ERROR, lookahead.line, lookahead.column)
+                else:
                     # If an error insertion fails then the parsing process enter into a panic mode recovery
                     sys.stderr.write(
                         f'{lookahead.line, lookahead.column} - SyntacticError: ERROR at or near "{lookahead.lex}"\n')
+
                     while (state, lookahead.token_type) not in self.action:
                         cursor += 1
                         if cursor >= len(tokens):
                             return
                         lookahead = tokens[cursor]
-                continue
+
+                    continue
             #######
             # End #
             #######
@@ -416,9 +428,21 @@ class ShiftReduceParser:
             action, tag = self.action[state, lookahead.token_type]
 
             if action == self.SHIFT:
-                stack += [lookahead.token_type, lookahead.lex, tag]
-                cursor += 1
+                # in this case tag is an integer
+                if self.verbose:
+                    print(f'Shift: {lookahead.lex, tag}')
+
+                if not inserted_error:
+                    stack += [lookahead.token_type, lookahead.lex, tag]
+                    cursor += 1
+                else:
+                    # the rule of an error token is the self token
+                    stack += [lookahead.token_type, lookahead, tag]
             elif action == self.REDUCE:
+                # in this case tag is a Production
+                if self.verbose:
+                    print(f'Reduce: {repr(tag)}')
+
                 head, body = tag
 
                 rules = RuleList(self, [None] * (len(body) + 1))
@@ -437,6 +461,7 @@ class ShiftReduceParser:
             else:
                 raise Exception(f'ParsingError: invalid action {action}')
 
+            inserted_error = False
 
 class SLRParser(ShiftReduceParser):
     def _build_automaton(self):

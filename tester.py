@@ -4,8 +4,8 @@ from typing import List
 import fire
 
 from pyjapt.lexing import Token
-from lexer import CoolLexer
-from parser import CoolParser
+from lexertab import CoolLexer
+from parsertab import CoolParser
 from semantics.formatter import Formatter
 
 lexer = CoolLexer()

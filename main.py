@@ -8,7 +8,7 @@ from semantics.progam_executor import Executor, ExecutionError
 from semantics.type_inference import InferenceChecker
 from semantics.utils.scope import Context, Scope
 
-detecting_errors = r"""
+execution_errors = r"""
 (* class A {
     a (n: Int) : Int { 0 };
 }
@@ -128,13 +128,23 @@ class Main inherits IO {
 }
 """
 
-verbose = False
+syntactic_errors = """
+class Main {
+    a: Int
+    
+    b: String
+
+    main () : Object { 0 }
+}
+"""
+
+verbose = sys.argv[1] if len(sys.argv) > 1 else False
 lexer = CoolLexer()
-parser = CoolParser()
+parser = CoolParser(verbose)
 
 if __name__ == '__main__':
 
-    tokens = lexer(detecting_errors)
+    tokens = lexer(syntactic_errors)
     ast = parser(tokens)
 
     if ast is not None:
@@ -152,7 +162,7 @@ if __name__ == '__main__':
         if verbose:
             print(CodeBuilder().visit(ast, 0), '\n')
 
-        if not errors:
+        if not errors and not parser.contains_errors:
             try:
                 Executor(context).visit(ast, Scope())
                 print('Program finished...')
