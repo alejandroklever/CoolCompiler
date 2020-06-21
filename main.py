@@ -131,10 +131,13 @@ class Main inherits IO {
 syntactic_errors = """
 class Main {
     a: Int
-    
     b: String
-
-    main () : Object { 0 }
+    main () : Object { let a: Int <- "" in 0 }
+    errors() : Object {
+        case a of
+            x: Int => (new IO).out_int(x)
+        esac
+    }
 }
 """
 
