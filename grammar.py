@@ -223,14 +223,26 @@ def feature_method_error(s):
 
 @G.production("case-list -> id : type => expr error")
 def case_list_error(s):
-    s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
+    s.error(f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
     return [(s[1], s[3], s[5])]
+
+
+@G.production("case-list -> id : type => expr error case-list")
+def case_list_error(s):
+    s.error(f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
+    return [(s[1], s[3], s[5])] + s[7]
 
 
 @G.production("block -> expr error")
 def block_single_error(s):
     s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
     return [s[1]]
+
+
+@G.production("block -> expr error block")
+def block_single_error(s):
+    s.error(f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    return [s[1]] + s[3]
 
 
 if __name__ == '__main__':
