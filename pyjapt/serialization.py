@@ -11,6 +11,7 @@ class %s(ShiftReduceParser, ABC):
         self.verbose = verbose
         self.action = self.__action_table()
         self.goto = self.__goto_table()
+        self._errors = []
 
     @staticmethod
     def __action_table():

@@ -325,11 +325,25 @@ class ShiftReduceParser:
         self.goto = {}
         self.sr = 0
         self.rr = 0
+        self._errors = []
         self._build_parsing_table()
 
         if self.conflicts:
             sys.stderr.write(f"Warning: {self.sr} Shift-Reduce Conflicts\n")
             sys.stderr.write(f"Warning: {self.rr} Reduce-Reduce Conflicts\n")
+
+    ##############
+    # Errors API #
+    ##############
+    @property
+    def errors(self):
+        return [m for _, _, m in sorted(self._errors)]
+
+    def set_error(self, line, column, message):
+        self._errors.append((line, column, message))
+    #############
+    #    End    #
+    #############
 
     def _build_parsing_table(self):
         G = self.augmented_G
@@ -462,6 +476,7 @@ class ShiftReduceParser:
                 raise Exception(f'ParsingError: invalid action {action}')
 
             inserted_error = False
+
 
 class SLRParser(ShiftReduceParser):
     def _build_automaton(self):

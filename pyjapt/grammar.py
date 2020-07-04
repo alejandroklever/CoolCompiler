@@ -395,6 +395,7 @@ class Grammar:
 
         :return: a function to decorate the production
         """
+
         def decorator(rule: Optional[Callable[[Lexer], Optional[Token]]]):
             self.add_terminal(name, regex, rule)
             return rule
@@ -432,11 +433,11 @@ class Grammar:
 
         return G
 
-    def serialize_lexer(self, class_name, grammar_module_name, grammar_variable_name='G'):
+    def serialize_lexer(self, class_name: str, grammar_module_name: str, grammar_variable_name: str = 'G'):
         LexerSerializer.build(self, class_name, grammar_module_name, grammar_variable_name)
 
     @staticmethod
-    def serialize_parser(parser, class_name, grammar_module_name, grammar_variable_name='G'):
+    def serialize_parser(parser, class_name: str, grammar_module_name: str, grammar_variable_name: str = 'G'):
         LRParserSerializer.build(parser, class_name, grammar_module_name, grammar_variable_name)
 
     def to_json(self):
@@ -605,5 +606,5 @@ class RuleList:
     def warning(self):
         pass
 
-    def error(self, message):
-        sys.stderr.write(message + '\n')
+    def error(self, index, message):
+        self.__parser.set_error(self[index].line, self[index].column, message)

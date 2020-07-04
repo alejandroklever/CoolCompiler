@@ -154,6 +154,10 @@ if __name__ == '__main__':
     tokens = lexer(syntactic_errors)
     ast = parser(tokens)
 
+    if parser.contains_errors:
+        for e in parser.errors:
+            sys.stderr.write(e + '\n')
+
     if ast is not None:
         context = Context()
         errors = []
