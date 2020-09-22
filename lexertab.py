@@ -1,6 +1,6 @@
 import re
 
-from pyjapt.lexing import Token, Lexer
+from pyjapt import Token, Lexer
 from grammar import G
 
 

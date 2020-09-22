@@ -2,7 +2,7 @@ import sys
 
 from lexertab import CoolLexer
 from parsertab import CoolParser
-from semantics import (TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering)
+from semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
 from semantics.formatter import CodeBuilder
 from semantics.execution import Executor, ExecutionError
 from semantics.type_inference import InferenceChecker
