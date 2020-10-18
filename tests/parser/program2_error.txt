@@ -1,1 +1,0 @@
-(16, 1) - SyntacticError: ERROR at or near CLASS

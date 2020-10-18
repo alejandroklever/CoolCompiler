@@ -8,75 +8,6 @@ from semantics.execution import Executor, ExecutionError
 from semantics.type_inference import InferenceChecker
 from semantics.utils.scope import Context, Scope
 
-execution_errors = r"""
-(* class A {
-    a (n: Int) : Int { 0 };
-}
-
-class B inherits A {
-    a (x: String) : String { 1 };
-} *)
-
-class Main {
-    x: Int;
-
-    main (): Object {
-        let a: Main in a.f()
-    };
-
-    f() : Int {
-        0
-    };
-}
-"""
-
-inference_program_01 = r"""
-class Main { main (): Object { 0 }; }
-
-class Point {
-    x: AUTO_TYPE;
-    y: AUTO_TYPE;
-
-    init(x0: Int, y0: Int): AUTO_TYPE {{
-        x <- x0;
-        y <- y0;
-        self;
-    }};
-}
-"""
-
-inference_program_02 = r"""
-class Main { main (): Object { 0 }; }
-
-class Ackermann {
-    ackermann(m: AUTO_TYPE, n: AUTO_TYPE): AUTO_TYPE {
-        if m = 0 then n + 1 else
-            if n = 0 then ackermann(m - 1, 1) else
-                ackermann(m - 1, ackermann(m, n - 1))
-            fi
-        fi
-    };
-}
-"""
-
-inference_program_03 = r"""
-class Main {
-    main (): Object { 0 };
-
-    f(a: AUTO_TYPE, b: AUTO_TYPE): AUTO_TYPE {
-        if a = 1 then b else
-            g(a + 1, b / 1) 
-        fi
-    };
-    
-    g(a: AUTO_TYPE, b: AUTO_TYPE): AUTO_TYPE {
-        if b = 1 then a else
-            f(a / 2, b + 1) 
-        fi
-    };
-}
-"""
-
 execution_program_01 = r"""
 class A { }
 
@@ -151,7 +82,7 @@ parser = CoolParser(verbose)
 
 if __name__ == '__main__':
 
-    tokens = lexer(syntactic_errors)
+    tokens = lexer(execution_program_01)
     ast = parser(tokens)
 
     if parser.contains_errors:

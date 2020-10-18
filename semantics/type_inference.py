@@ -35,7 +35,7 @@ All nodes has an implementation of the method update that handle how to update t
 
 """
 from collections import deque, OrderedDict
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 
 import semantics.utils.astnodes as ast
 import semantics.utils.errors as err
@@ -136,9 +136,6 @@ class DependencyGraph:
                 continue
             self.update_dependencies_of(current_node, current_node.type, visited)
 
-        for k, v in self.dependencies.items():
-            print(k, ':', v)
-
         if default_type is not None:
             for node in self.dependencies:
                 if node not in visited:
@@ -164,8 +161,8 @@ class InferenceChecker:
     def __init__(self, context, errors):
         self.context: Context = context
         self.errors: List[str] = errors
-        self.current_type: Type = None
-        self.current_method: Method = None
+        self.current_type: Optional[Type] = None
+        self.current_method: Optional[Method] = None
 
         self.variables = {}
         self.attributes = self.build_attributes_reference(context)
