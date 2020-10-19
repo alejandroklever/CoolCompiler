@@ -3,7 +3,7 @@ import time
 
 from pyjapt import Grammar
 
-from semantics.utils import astnodes as ast
+import semantics.utils.astnodes as ast
 
 G = Grammar()
 

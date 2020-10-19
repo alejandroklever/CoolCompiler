@@ -1,5 +1,5 @@
-import pathlib
-import pytest
+import os
+from pathlib import Path
 from typing import List
 
 from lexertab import CoolLexer
@@ -37,7 +37,10 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
 def test_inference_programs():
     inference_testing_programs = []
     inference_testing_results = []
-    for path in sorted(pathlib.Path('inference').iterdir()):
+
+    cwd = Path.cwd()
+    path = cwd / 'inference' if cwd.name.endswith('tests') else cwd / 'tests' / 'inference'
+    for path in sorted(path.iterdir()):
         s = path.open('r').read()
         if 'program' in path.name:
             inference_testing_programs.append(s)

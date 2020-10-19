@@ -234,6 +234,9 @@ class VariableInfo:
         self.name: str = name
         self.type: Type = vtype
 
+    def __str__(self):
+        return self.name + ': ' + self.type.name
+
 
 class Scope:
     def __init__(self, parent: Optional['Scope'] = None):

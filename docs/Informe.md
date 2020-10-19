@@ -8,189 +8,17 @@
 
 ## Indice
 
-- 0 Estructura del proyecto.
-- 1 Analisis Lexicografico y Sintactico.
-  - 1.1 Generador de lexers y parsers LR "PyJapt".
-  - 1.2 Manejo de errores lexicograficos y sintacticos.
-- 2 Inferencia de tipos.
-  - 2.1 Algoritmo y Grafo de Dependecias.
-  - 2.2 Nodos de Dependencia.
-  - 2.3 Casos factibles.
-    - 2.3.1 Ejemplos de casos Factibles para la Inferencia.
-  - 2.4 Casos No factibles.
-    - 2.4.1 Casos Generales.
-    - 2.4.2 Casos Particulares.
-  - 2.5 Expresiones atomicas.
+- 1 Inferencia de tipos.
+  - 1.1 Algoritmo y Grafo de Dependecias.
+  - 1.2 Nodos de Dependencia.
+  - 1.3 Casos factibles.
+    - 1.3.1 Ejemplos de casos Factibles para la Inferencia.
+  - 1.4 Casos No factibles.
+    - 1.4.1 Casos Generales.
+    - 1.4.2 Casos Particulares.
+  - 1.5 Expresiones atomicas.
 
-## 1 Analisis Lexicografico y Sintactico
-
-### 1.1 Generador de lexers y parsers LR "PyJapt"
-
-PyJapt es un generador de lexer y parser desarrolado por los autores del proyecto que pretende dar una solucion no solo a la creacion de estas piezas del proceso de compilacion, sino tambien permitir una interfaz de manejo de errores sintacticos y lexicograficos personalizados. Para su construccion nos hemos basado en las construcciones realizadas en las clases practicas y nos hemos inspirado en otros generadores de parser para las nuevas funcionalidades como yacc, bison, ply y antlr por ejemplo.
-
-PyJapt gira alrededor del concepto de gramatica.
-
-Para definir los no terminales de la gramatiga utilizamos el metodo `add_non_terminal()` de la clase `Grammar`.
-
-```python
-from pyjapt.grammar import Grammar
-
-G = Grammar()
-
-expr = G.add_non_terminal('expr', start_symbol=True)
-term = G.add_non_terminal('term')
-fact = G.add_non_terminal('fact')
-```
-
-Para definir los terminales de nuestra gramatica usaremos el metodo `add_terminal()` de la clase `Grammar`. Este metodo recibe como primer parametro el nombre del no terminal y como parametro opcional una expresion regular para el analizador lexicografico. En caso de el segundo parametro no se provea la expresion regular sera el nombre literal del terminal.
-
-```python
-plus = G.add_terminals('+')
-minus = G.add_terminals('-')
-star = G.add_terminals('*')
-div = G.add_terminals('/')
-
-num = G.add_terminal('int', regex=r'\d+')
-```
-
-Si tenemos un conjunto de terminales cuya expresion regular coincide con su propio nombre podemos encapsularlos con la funcion `add_terminals()` de la clase `Grammar`
-
-```python
-plus, minus, star, div = G.add_terminals('+ - * /')
-num = G.add_terminal('int', regex=r'\d+')
-```
-
-Puede darse el caso tambien de que querramos aplicar una regla cuando un terminal especifico sea encontrado, para esto PyJapt nos brinda el decorador de funciones `terminal()` de la clase `Grammar` que recibe el nombre y la expresion regular del terminal. La funcion decorada debe recibir como parametro uan referencia al lexer para poder modificar parametros tales como la fila y la columna de los terminales o la posicion de lectura del parser y retornar un `Token`, en caso de no retornar este token sera ignorado.
-
-```python
-@G.terminal('int', r'\d+')
-def id_terminal(lexer):
-    lexer.column += len(lexer.token.lex)
-    lexer.position += len(lexer.token.lex)
-    lexer.token.lex = int(lexer.token.lex)
-    return lexer.token
-```
-
-Tambien podemos usar esta forma de definicion de terminales para saltarnos ciertos caracteres o tokens.
-
-```python
-##################
-# Ignored Tokens #
-##################
-@G.terminal('newline', r'\n+')
-def newline(lexer):
-    lexer.lineno += len(lexer.token.lex)
-    lexer.position += len(lexer.token.lex)
-    lexer.column = 1
-
-
-@G.terminal('whitespace', r' +')
-def whitespace(lexer):
-    lexer.column += len(lexer.token.lex)
-    lexer.position += len(lexer.token.lex)
-
-
-@G.terminal('tabulation', r'\t+')
-def tab(lexer):
-    lexer.column += 4 * len(lexer.token.lex)
-    lexer.position += len(lexer.token.lex)
-```
-
-Para definir las producciones de nuestra gramatica podemos usar una forma attributada o no atributada:
-
-```python
-# Esta es una gramatica no atributada usando las variable previamente declaradas
-expr %= expr + plus + term
-expr %= expr + minus + term
-expr %= term
-
-term %= term + star + fact
-term %= term + div + fact
-term %= fact
-
-fact %= num
-
-# Un poco mas sencillo...
-# Cada simbolo del string de la produccion debe estar separado por un espacio en blanco
-expr %= 'expr + term'
-expr %= 'expr - term'
-expr %= 'term'
-
-term %= 'term * factor'
-term %= 'term / factor'
-term %= 'fact'
-
-fact %= 'int'
-
-# Esta es una gramatica atributada
-expr %= 'expr + term', lambda s: s[1] + s[3]
-expr %= 'expr - term', lambda s: s[1] + s[3]
-expr %= 'term', lambda s: s[1]
-
-term %= 'term * factor', lambda s: s[1] + s[3]
-term %= 'term / factor', lambda s: s[1] + s[3]
-term %= 'fact', lambda s: s[1]
-
-fact %= 'int', lambda s: int(s[1])
-
-# Tambien podemos atributar una funcion para definir una regla semantica
-# Esta funcion debe recibir como parametro `s` que es una referencia a una
-# lista con las reglas semanticas de cada simbolo de la produccion.
-# Para separar el simbolo de la cabecera del cuerpo de la expresion
-# usamos como segundo simbolo `->`
-@G.production('expr -> expr + term')
-def expr_prod(s):
-    print('Estas sumando una expresion y un termino ;)')
-    return s[1] + s[3]
-```
-
-### 1.2 Manejo de errores lexicograficos y sintacticos
-
-Una parte importante del proceso de parsing es manejar los errores. Para esto podemos hacer el parser a mano e insertar el reporte de errores, ya que los las tecnicas como `Panic Recovery Mode` la cual implementa `PyJapt` solo permiten que no se detenga la ejecucion de nuestro parser, para dar reportes de errores especificos `PyJapt` ofrece la creacion de producciones erroneas y para reportar errores comunes en un lenguaje de programacion como la falta de un `;` un operador desconocido etc. para esto nuestra gramatica debe activar el flag de terminal de error.
-
-```python
-G.add_terminal_error() # Agrega el terminal de error a la gramatica.
-
-# Ejemplo de una posible produccion de error
-@G.production("instruction -> let id = expr error")
-def attribute_error(s):
-    # Con esta linea reportamos el mensaje del error
-    # Como la regla semantica de s[5] es el propio token (por ser un terminal) entonces tenemos acceso
-    # a su lexema, tipo de token, line y columna.
-    s.error(f"{s[5].line, s[5].column} - SyntacticError: Expected ';' instead of '{s[5].lex}'")
-
-    # Con esta linea permitimos que se siga creando una nodo del ast para
-    # poder detectar errores semanticos a pesar de haber errores sintacticos
-    return LetInstruction(s[2], s[4])
-```
-
-Para reportar errores lexicograficos el procedimiento es bastante similar solo definimos un token que contenga un error, en este ejemplo un comentario multiliena que contiene un final de cadena.
-
-```python
-@G.terminal('comment_error', r'\(\*(.|\n)*$')
-def comment_eof_error(lexer):
-    lexer.contain_errors = True
-    lex = lexer.token.lex
-    for s in lex:
-        if s == '\n':
-            lexer.lineno += 1
-            lexer.column = 0
-        lexer.column = 1
-    lexer.position += len(lex)
-    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: EOF in comment')
-```
-
-Y para reportar errores generales durante el proceso de tokenizacion podemos usar el decorador `lexical_error`
-
-```python
-@G.lexical_error
-def lexical_error(lexer):
-    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"')
-    lexer.column += 1
-    lexer.position += 1
-```
-
-## 2 Inferencia de Tipos
+## 1 Inferencia de Tipos
 
 COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje no presenta inferencia de tipos esta es una caracteristica muy util que incorporaremos en un nuestro interprete.
 
@@ -198,7 +26,7 @@ Nuestro algoritmo de inferencia de tipos se apoya en el uso basico de la teoria 
 
 La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable, parametro de funcion o retorno de funcion el primer tipo que le puede ser asignado, modificando en el arbol de sintaxis abstracta el string `AUTO_TYPE` por el nombre del tipo correspondiente y asignando los tipos correspondientes en el contexto y el ambito en que seon declarados.
 
-### 2.1 Algoritmo y Grafo de Dependecias
+### 1.1 Algoritmo y Grafo de Dependecias
 
 ***Entrada :*** Un arbol de sintaxis abstracta, un contexto con todos los tipos declarados en el programa de COOL.
 
@@ -206,7 +34,7 @@ La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable,
 
 ***Algoritmo :*** Durante el recorrido del AST sera construido un grafo dirigido cuyos nodos encerraran el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresion cuyo tipo estatico es marcado como `AUTO_TYPE`, y sea `E2` una expresion a partir de a cual se puede inferir el tipo de estatico de E1 entonces en el grafo existira la arista `<E2, E1>`. Una vez construido el arbol se comenzara una cadena de expansion de tipos estaticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresion con tipo estatico definido, al cual llamaremos atomo. Cuando todos los atomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos seran marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
-### 2.2 Nodos de Dependencia
+### 1.2 Nodos de Dependencia
 
 Cada nodo del grafo sera una abstraccion de un concepto en el que se use un tagueo explicito de `AUTO_TYPE` y tendra las referencias a las partes del proceso de semantica del programa, ademas de que cada nodo contara con un metodo `update(type)` el cual actualiza el tipo estatico de estos conceptos.
 
@@ -236,7 +64,7 @@ class VariableInfoNode(DependencyNode):
     pass
 ```
 
-### 2.3 Casos factibles
+### 1.3 Casos factibles
 
 Funcionando de manera analoga para atributos, variables, parametros y retorno de funciones. Explicado de forma recursiva puede ser visto como:
 
@@ -254,7 +82,7 @@ Funcionando de manera analoga para atributos, variables, parametros y retorno de
 
 - En las expresiones if-then-else o case-of asignan automaticamente el tipo `Object` por el momento debido a la complejidad que supone la operacion `join` en el los case y en las clausulas then-else.
 
-### 2.3.1 Ejemplos de casos Factibles para la Inferencia
+### 1.3.1 Ejemplos de casos Factibles para la Inferencia
 
 En este caso la expresion `d + 1` desambigua a `d` en un `Int` y luego `c` se infiere de `d`, `b` se infiere de `c`, `a` se infiere de `b` y el retorno de la funcion de infiere de `a`. Quedando todos los parametros y el retorno de la funcion marcados como `Int`.
 
