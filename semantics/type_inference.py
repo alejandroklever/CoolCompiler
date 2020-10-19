@@ -44,6 +44,8 @@ from semantics.utils.scope import Type, Attribute, Method, Scope, Context, Seman
 
 
 class DependencyNode:
+    type: Type
+
     def update(self, typex):
         raise NotImplementedError()
 
@@ -52,10 +54,10 @@ class DependencyNode:
 
 
 class AtomNode(DependencyNode):
-    def __init__(self, typex):
-        self.type = typex
+    def __init__(self, typex: Type):
+        self.type: Type = typex
 
-    def update(self, typex):
+    def update(self, typex: Type):
         pass
 
     def __str__(self):
@@ -63,7 +65,7 @@ class AtomNode(DependencyNode):
 
 
 class VariableInfoNode(DependencyNode):
-    def __init__(self, var_type, variable_info):
+    def __init__(self, var_type: Type, variable_info: VariableInfo):
         self.type: Type = var_type
         self.variable_info: VariableInfo = variable_info
 
@@ -75,7 +77,7 @@ class VariableInfoNode(DependencyNode):
 
 
 class AttributeNode(DependencyNode):
-    def __init__(self, var_type, attribute):
+    def __init__(self, var_type: Type, attribute: Attribute):
         self.type: Type = var_type
         self.attribute: Attribute = attribute
 
@@ -87,7 +89,7 @@ class AttributeNode(DependencyNode):
 
 
 class ParameterNode(DependencyNode):
-    def __init__(self, param_type, method, index):
+    def __init__(self, param_type: Type, method: Method, index: int):
         self.type: Type = param_type
         self.method: Method = method
         self.index: int = index
@@ -100,7 +102,7 @@ class ParameterNode(DependencyNode):
 
 
 class ReturnTypeNode(DependencyNode):
-    def __init__(self, typex, method):
+    def __init__(self, typex: Type, method: Method):
         self.type: Type = typex
         self.method: Method = method
 
@@ -164,7 +166,7 @@ class InferenceChecker:
         self.current_type: Optional[Type] = None
         self.current_method: Optional[Method] = None
 
-        self.variables = {}
+        self.variables: Dict[VariableInfo, VariableInfoNode] = {}
         self.attributes = self.build_attributes_reference(context)
         self.methods = self.build_methods_reference(context)
         self.graph = DependencyGraph()
@@ -221,14 +223,14 @@ class InferenceChecker:
 
     @visitor.when(ast.AttrDeclarationNode)
     def visit(self, node: ast.AttrDeclarationNode, scope: Scope):
-        # Define attribute in the scope
-        var_info = scope.define_variable(node.id, self.context.get_type(node.type))
-
         # Solve the expression of the attribute
         expr_node = self.visit(node.expr, scope.create_child()) if node.expr is not None else None
 
+        # Define attribute in the scope
+        var_info = scope.define_variable(node.id, self.context.get_type(node.type))
+
         # Set and get the reference to the variable info node
-        var_info_node = self.variables[var_info] = VariableInfoNode(self.context.get_type('AUTO_TYPE'), var_info)
+        var_info_node = self.variables[var_info] = VariableInfoNode(self.context.get_type(node.type), var_info)
 
         if node.type == 'AUTO_TYPE':
             # Get the reference to the attribute node
@@ -307,7 +309,14 @@ class InferenceChecker:
         expr_node = self.visit(node.expr, scope.create_child())
 
         if var_info is not None:
-            self.graph.add_edge(expr_node, self.variables[var_info])
+            if expr_node.type.name != 'AUTO_TYPE' and var_info.type.name == 'AUTO_TYPE':
+                self.graph.add_edge(expr_node, self.variables[var_info])
+            elif var_info.type.name != 'AUTO_TYPE' and expr_node.type.name == 'AUTO_TYPE':
+                self.graph.add_edge(AtomNode(self.context.get_type(var_info.type.name)), expr_node)
+            elif var_info.type.name == 'AUTO_TYPE' and expr_node.type.name == 'AUTO_TYPE':
+                # Create a cycle
+                self.graph.add_edge(expr_node, self.variables[var_info])
+                self.graph.add_edge(self.variables[var_info], expr_node)
         else:
             pass
 

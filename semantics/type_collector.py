@@ -22,7 +22,7 @@ class TypeCollector:
         pass
 
     @visitor.when(ast.ProgramNode)
-    def visit(self, node: ast.ProgramNode):
+    def visit(self, node):
         self.context.create_type('AUTO_TYPE')
         self_type = self.context.create_type('SELF_TYPE')
         object_type = self.context.create_type('Object')
