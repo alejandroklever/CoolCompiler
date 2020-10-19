@@ -133,7 +133,10 @@ def infer(file: str, verbose: bool = False):
     ast, _ = parse(file, verbose)
 
     if ast is not None:
-        ast, scope, context, error = check_semantics(ast, Scope(), Context(), [])
+        ast, scope, context, errors = check_semantics(ast, Scope(), Context(), [])
+        if errors:
+            for e in errors:
+                typer.echo(e, err=True)
         typer.echo(CodeBuilder().visit(ast, 0))
 
 

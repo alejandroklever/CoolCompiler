@@ -152,6 +152,11 @@ class Executor:
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, scope: Scope):
         variable_info = scope.find_variable(node.id)
+
+        if variable_info is None:
+            self.current_instance.set_attribute_instance(node.id, self.visit(node.expr, scope))
+            return self.current_instance.get_attribute_instance(node.id)
+
         variable_info.instance = self.visit(node.expr, scope)
         return variable_info.instance
 

@@ -96,7 +96,7 @@ class CodeBuilder:
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, tabs: int = 0):
-        return '    ' * tabs + f'new {node.lex}'
+        return '    ' * tabs + f'(new {node.lex})'
 
 
 class Formatter:

@@ -367,7 +367,7 @@ class InferenceChecker:
             node.obj = ast.VariableNode('self')
         obj_node = self.visit(node.obj, scope)
 
-        if isinstance(obj_node, AtomNode):
+        if isinstance(obj_node, AtomNode) and obj_node.type.contains_method(node.id):
             method, owner = obj_node.type.get_method(node.id, get_owner=True)
             param_nodes, return_node = self.methods[owner.name, method.name]
             for i, arg in enumerate(node.args):
@@ -388,7 +388,10 @@ class InferenceChecker:
                     else:
                         self.graph.add_edge(param_nodes[i], arg_node)
                         self.graph.add_edge(arg_node, param_nodes[i])
-            return return_node if return_node.type.name == 'AUTO_TYPE' else AtomNode(return_node.type)
+
+            if return_node.type.name == 'AUTO_TYPE':
+                return return_node
+            return AtomNode(return_node.type if return_node.type.name != 'SELF_TYPE' else obj_node.type)
 
         for arg in node.args:
             self.visit(arg, scope)
