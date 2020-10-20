@@ -297,8 +297,12 @@ class InferenceChecker:
                 # Create an edge or add an new node only if it is AutoType
                 if expr_node is not None:
                     self.graph.add_edge(expr_node, var_info_node)
+                    if expr_node.type.name == 'AUTO_TYPE':
+                        self.graph.add_edge(var_info_node, expr_node)
                 else:
                     self.graph.add_node(var_info_node)
+            elif expr_node is not None and expr_node.type.name == 'AUTO_TYPE':
+                self.graph.add_edge(var_info_node, expr_node)
 
         return self.visit(node.expr, scope.create_child())
 
@@ -354,12 +358,16 @@ class InferenceChecker:
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         self.visit(node.expr, scope)
+        case_expressions = []
         for _id, _type, _expr in node.cases:
             new_scope = scope.create_child()
             var_info = new_scope.define_variable(_id, self.context.get_type(_type))
             self.variables[var_info] = VariableInfoNode(var_info.type, var_info)
-            self.visit(_expr, new_scope)
-        return AtomNode(self.context.get_type('Object'))  # For now
+            case_expressions.append(self.visit(_expr, new_scope))
+
+        if any(e.type.name == 'AUTO_TYPE' for e in case_expressions):
+            return AtomNode(self.context.get_type('Object'))
+        return AtomNode(Type.multi_join([e.type for e in case_expressions]))
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
@@ -423,7 +431,9 @@ class InferenceChecker:
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, scope: Scope):
-        return AtomNode(self.context.get_type(node.lex))
+        if node.lex in self.context.types:
+            return AtomNode(self.context.get_type(node.lex))
+        return AtomNode(self.context.get_type('Object'))
 
     @visitor.when(ast.NegationNode)
     def visit(self, node: ast.NegationNode, scope: Scope):
@@ -487,8 +497,8 @@ class InferenceTypeSubstitute:
     def __init__(self, context: Context, errors: List[str] = []):
         self.context: Context = context
         self.errors: List[str] = errors
-        self.current_type: Type = None
-        self.current_method: Method = None
+        self.current_type: Optional[Type] = None
+        self.current_method: Optional[Method] = None
 
     @visitor.on('node')
     def visit(self, node, tabs):

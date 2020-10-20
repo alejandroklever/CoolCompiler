@@ -211,37 +211,37 @@ G.add_terminal_error()
 
 @G.production("feature-list -> attribute error feature-list")
 def feature_attribute_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 
 @G.production("feature-list -> method error feature-list")
 def feature_method_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 
 @G.production("case-list -> id : type => expr error")
 def case_list_error(s):
-    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
+    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'.")
     return [(s[1], s[3], s[5])]
 
 
 @G.production("case-list -> id : type => expr error case-list")
 def case_list_error(s):
-    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
+    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'.")
     return [(s[1], s[3], s[5])] + s[7]
 
 
 @G.production("block -> expr error")
 def block_single_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]]
 
 
 @G.production("block -> expr error block")
 def block_single_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 

@@ -55,7 +55,7 @@ class OverriddenMethodChecker:
 
         Params
         ------
-        - errors: List[str] is a list of errors detected in the ast travel
+        - syntactic_and_semantic_errors: List[str] is a list of syntactic_and_semantic_errors detected in the ast travel
         - context: Context the context for keeping the classes
         - current_type: Optional[Type] is the current type in the building process"""
 

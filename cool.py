@@ -12,92 +12,21 @@ from semantics.execution import Executor, ExecutionError
 from semantics.type_inference import InferenceChecker
 from semantics.utils.scope import Context, Scope
 
-
-# execution_program_01 = r"""
-# class A { }
-#
-# class B inherits A { }
-#
-# class C inherits A { }
-#
-# class Main inherits IO {
-#     number: Int <- 5;
-#
-#     main () : Object {
-#         0
-#     };
-#
-#     testing_case() : IO {
-#         let a: A <- new C in
-#             case a of
-#                 x: B => out_string("Is type B.\n");
-#                 x: C => out_string("Is type C.\n");
-#             esac
-#     };
-#
-#     testing_fibonacci(n: Int) : IO {{
-#         out_string("Iterative Fibonacci : ");
-#         out_int(iterative_fibonacci(5));
-#         out_string("\n");
-#
-#         out_string("Recursive Fibonacci : ");
-#         out_int(recursive_fibonacci(5));
-#         out_string("\n");
-#     }};
-#
-#     recursive_fibonacci (n: AUTO_TYPE) : AUTO_TYPE {
-#         if n <= 2 then 1 else recursive_fibonacci(n - 1) + recursive_fibonacci(n - 2) fi
-#     };
-#
-#     iterative_fibonacci(n: AUTO_TYPE) : AUTO_TYPE {
-#         let  i: Int <- 2, n1: Int <- 1, n2: Int <- 1, temp: Int in {
-#             while i < n loop
-#                 let temp: Int <- n2 in {
-#                     n2 <- n2 + n1;
-#                     n1 <- temp;
-#                     i <- i + 1;
-#                 }
-#             pool;
-#             n2;
-#         }
-#     };
-# }
-# """
-#
-# syntactic_errors = """
-# class Main {
-#     a: Int
-#
-#     b: String
-#
-#     main () : Object { let a: Int <- "" in 0 }
-#
-#     errors() : Object {
-#         case a of
-#             x: Int => (new IO).out_int(x)
-#             y: String => (new IO).out_string(x)
-#         esac
-#     }
-# }
-# """
-
-# lexer = CoolLexer()
-# parser = CoolParser()
-
 app = typer.Typer()
 
 
 def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
     TypeCollector(context, errors).visit(ast)
     TypeBuilder(context, errors).visit(ast)
+    declarations = ast.declarations
     topological_ordering(ast, context, errors)
+    ast.declarations = declarations
     OverriddenMethodChecker(context, errors).visit(ast)
     InferenceChecker(context, errors).visit(ast, scope)
     TypeChecker(context, errors).visit(ast, scope)
     return ast, scope, context, errors
 
 
-@app.command()
 def tokenize(file: str, verbose: bool = False):
     path = Path.cwd() / file
     s = path.open('r').read()
@@ -115,7 +44,6 @@ def tokenize(file: str, verbose: bool = False):
     return tokens
 
 
-@app.command()
 def parse(file: str, verbose: bool = False):
     tokens = tokenize(file, verbose)
     parser = CoolParser(verbose)
@@ -150,12 +78,12 @@ def run(file: str, verbose: bool = False):
         if not errors and not parser.contains_errors:
             try:
                 Executor(context).visit(ast, Scope())
-                print('Program finished...')
+                typer.echo('Program finished...')
             except ExecutionError as e:
-                sys.stderr.write(e.text + '\n')
+                typer.echo(e.text, err=True)
 
         for error in errors:
-            sys.stderr.write(error + '\n')
+            typer.echo(error, err=True)
 
 
 if __name__ == '__main__':

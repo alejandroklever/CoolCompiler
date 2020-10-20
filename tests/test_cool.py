@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import List
 
@@ -39,7 +38,7 @@ def test_inference_programs():
     inference_testing_results = []
 
     cwd = Path.cwd()
-    path = cwd / 'inference' if cwd.name.endswith('tests') else cwd / 'tests' / 'inference'
+    path = cwd / 'inference' if str(cwd).endswith('tests') else cwd / 'tests' / 'inference'
     for path in sorted(path.iterdir()):
         s = path.open('r').read()
         if 'program' in path.name:
@@ -54,15 +53,35 @@ def test_inference_programs():
         assert not errors and CodeBuilder().visit(ast, 0) == result
 
 
+def test_errors_in_programs():
+    errors_testing_programs = []
+    errors_testing_results = []
+
+    cwd = Path.cwd()
+    path = cwd / 'syntactic_and_semantic_errors' if str(cwd).endswith('tests') else cwd / 'tests' / 'syntactic_and_semantic_errors'
+    for path in sorted(path.iterdir()):
+        s = path.open('r').read()
+        if 'program' in path.name:
+            errors_testing_programs.append(s)
+        else:
+            errors_testing_results.append(s)
+
+    for code, result in zip(errors_testing_programs, errors_testing_results):
+        tokens, _ = tokenize(code)
+        ast, parser = parse(tokens)
+        ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
+        assert '\n'.join(parser.errors + errors) == result
+
+
 if __name__ == '__main__':
     pass
 
-    # if not errors and not parser.contains_errors:
+    # if not syntactic_and_semantic_errors and not parser.contains_errors:
     #     try:
     #         Executor(context).visit(ast, Scope())
     #         print('Program finished...')
     #     except ExecutionError as e:
     #         sys.stderr.write(e.text + '\n')
     #
-    # for error in errors:
+    # for error in syntactic_and_semantic_errors:
     #     sys.stderr.write(error + '\n')
