@@ -33,55 +33,68 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
     return ast, scope, context, errors
 
 
-def test_inference_programs():
-    inference_testing_programs = []
-    inference_testing_results = []
+def test_inference():
+    paths = []
+    programs = []
+    results = []
 
     cwd = Path.cwd()
-    path = cwd / 'inference' if str(cwd).endswith('tests') else cwd / 'tests' / 'inference'
+    folder_name = 'inference'
+    path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
     for path in sorted(path.iterdir()):
         s = path.open('r').read()
         if 'program' in path.name:
-            inference_testing_programs.append(s)
+            programs.append(s)
+            paths.append(path.name)
         else:
-            inference_testing_results.append(s)
+            results.append(s)
 
-    for code, result in zip(inference_testing_programs, inference_testing_results):
+    for path, code, result in zip(paths, programs, results):
         tokens, _ = tokenize(code)
         ast, _ = parse(tokens)
         ast, scope, context, errors = check_semantics(ast, Scope(), Context(), [])
         assert not errors and CodeBuilder().visit(ast, 0) == result
 
 
-def test_errors_in_programs():
-    errors_testing_programs = []
-    errors_testing_results = []
+def test_syntactic_and_semantic_errors():
+    paths = []
+    programs = []
+    results = []
 
     cwd = Path.cwd()
-    path = cwd / 'syntactic_and_semantic_errors' if str(cwd).endswith('tests') else cwd / 'tests' / 'syntactic_and_semantic_errors'
+    folder_name = 'syntactic_and_semantic_errors'
+    path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
     for path in sorted(path.iterdir()):
         s = path.open('r').read()
-        if 'program' in path.name:
-            errors_testing_programs.append(s)
+        if path.name.endswith('.cl'):
+            programs.append(s)
+            paths.append(path.name)
         else:
-            errors_testing_results.append(s)
+            results.append(s)
 
-    for code, result in zip(errors_testing_programs, errors_testing_results):
+    for path, code, result in zip(paths, programs, results):
         tokens, _ = tokenize(code)
         ast, parser = parse(tokens)
         ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
-        assert '\n'.join(parser.errors + errors) == result
+        assert '\n'.join(parser.errors + errors) == result, path
 
 
-if __name__ == '__main__':
-    pass
+def test_lexicographic_errors():
+    paths = []
+    programs = []
+    results = []
 
-    # if not syntactic_and_semantic_errors and not parser.contains_errors:
-    #     try:
-    #         Executor(context).visit(ast, Scope())
-    #         print('Program finished...')
-    #     except ExecutionError as e:
-    #         sys.stderr.write(e.text + '\n')
-    #
-    # for error in syntactic_and_semantic_errors:
-    #     sys.stderr.write(error + '\n')
+    cwd = Path.cwd()
+    folder_name = 'lexicographic_errors'
+    path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
+    for path in sorted(path.iterdir())[:2 * 2]:
+        s = path.open('r').read()
+        if path.name.endswith('.cl'):
+            programs.append(s)
+            paths.append(path.name)
+        else:
+            results.append(s)
+
+    for path, code, result in zip(paths, programs, results):
+        tokens, lexer = tokenize(code)
+        assert lexer.contain_errors and '\n'.join(lexer.errors) == result.strip(), path

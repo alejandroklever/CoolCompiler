@@ -41,11 +41,15 @@ def tokenize(file: str, verbose: bool = False):
         for t in tokens:
             typer.echo(t)
 
-    return tokens
+    return tokens, lexer
 
 
 def parse(file: str, verbose: bool = False):
-    tokens = tokenize(file, verbose)
+    tokens, lexer = tokenize(file, verbose)
+
+    if lexer.contain_errors:
+        return None, None
+
     parser = CoolParser(verbose)
     ast = parser(tokens)
 

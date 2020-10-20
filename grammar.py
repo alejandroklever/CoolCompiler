@@ -1,7 +1,7 @@
 import inspect
 import time
 
-from pyjapt import Grammar
+from pyjapt import Grammar, Lexer
 
 import semantics.utils.astnodes as ast
 
@@ -71,8 +71,8 @@ G.add_terminal('int', regex=r'\d+')
 ############
 # Comments #
 ############
-@G.terminal('comment', r'(\(\*[^$]*\*\))|--.*')
-def comment(lexer):
+@G.terminal('single_line_comment', r'--.*')
+def single_line_comment(lexer):
     lex = lexer.token.lex
     for s in lex:
         if s == '\n':
@@ -82,24 +82,49 @@ def comment(lexer):
     lexer.position += len(lex)
 
 
-@G.terminal('comment_error', r'\(\*(.|\n)*$')
-def comment_eof_error(lexer):
-    lexer.contain_errors = True
-    lex = lexer.token.lex
-    for s in lex:
-        if s == '\n':
-            lexer.lineno += 1
-            lexer.column = 0
-        lexer.column += 1
-    lexer.position += len(lex)
-    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: EOF in comment')
+@G.terminal('multi_line_comment', r'\(\*')
+def multi_line_comment(lexer: Lexer):
+    stack = ['(*']
+    text = lexer.text
+    pos = lexer.position + 2
+    lex = '(*'
+
+    while stack:
+        if pos >= len(text):
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: EOF in comment')
+            return None
+
+        if text.startswith('(*', pos):
+            stack.append('(*')
+            pos += 2
+            lex += '(*'
+            lexer.column += 2
+        elif text.startswith('*)', pos):
+            stack.pop()
+            pos += 2
+            lex += '*)'
+            lexer.column += 2
+        else:
+            if text[pos] == '\n':
+                lexer.lineno += 1
+                lexer.column = 0
+            elif text[pos] == '\t':
+                lexer.column += 3
+            lex += text[pos]
+            pos += 1
+            lexer.column += 1
+    lexer.position = pos
+    lexer.token.lex = lex
 
 
 ##################
 # Ignored Tokens #
 ##################
 @G.terminal('newline', r'\n+')
-def newline(lexer):
+def newline(lexer: Lexer):
     lexer.lineno += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
     lexer.column = 1
@@ -119,7 +144,8 @@ def tab(lexer):
 
 @G.lexical_error
 def lexical_error(lexer):
-    lexer.add_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"')
+    lexer.add_error(lexer.lineno, lexer.column,
+                    f'{lexer.lineno, lexer.column} - LexicographicError: ERROR "{lexer.token.lex}"')
     lexer.column += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
 
