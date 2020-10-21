@@ -1,14 +1,13 @@
-import sys
+from pathlib import Path
 from typing import List
 
 import typer
-from pathlib import Path
 
 from lexertab import CoolLexer
 from parsertab import CoolParser
 from semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
-from semantics.formatter import CodeBuilder
 from semantics.execution import Executor, ExecutionError
+from semantics.formatter import CodeBuilder
 from semantics.type_inference import InferenceChecker
 from semantics.utils.scope import Context, Scope
 

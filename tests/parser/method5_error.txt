@@ -1,0 +1,3 @@
+(25, 17) - SyntacticError: ERROR at or near "string"
+(30, 13) - SyntacticError: ERROR at or near "inherits"
+(31, 13) - SyntacticError: ERROR at or near ":"

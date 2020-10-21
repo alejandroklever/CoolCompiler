@@ -1,0 +1,6 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(73, 65) - SyntacticError: ERROR at or near "not"
+(73, 115) - SyntacticError: ERROR at or near "+"
+(74, 5) - SyntacticError: ERROR at or near "}"
+(80, 15) - SyntacticError: ERROR at or near ":"

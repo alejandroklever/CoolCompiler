@@ -1,0 +1,2 @@
+(9, 7) - SyntacticError: ERROR at or near "alpha"
+(11, 38) - SyntacticError: ERROR at or near ";"

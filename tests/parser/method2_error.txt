@@ -1,0 +1,3 @@
+(21, 24) - SyntacticError: ERROR at or near "B"
+(25, 13) - SyntacticError: ERROR at or near "("
+(25, 24) - SyntacticError: ERROR at or near "{"

@@ -92,7 +92,8 @@ class CodeBuilder:
 
     @visitor.when(ast.AtomicNode)
     def visit(self, node: ast.AtomicNode, tabs: int = 0):
-        return '    ' * tabs + f'{node.lex}'
+        lex = node.lex
+        return '    ' * tabs + f'{lex}'
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, tabs: int = 0):

@@ -1,0 +1,3 @@
+(11, 5) - SyntacticError: ERROR at or near "test1"
+(14, 9) - SyntacticError: ERROR at or near "2"
+(15, 6) - SyntacticError: ERROR at or near ";"

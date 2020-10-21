@@ -1,0 +1,2 @@
+(34, 13) - SyntacticError: ERROR at or near "new"
+(41, 9) - SyntacticError: ERROR at or near "fi"

@@ -64,8 +64,75 @@ G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
 ###############
 # Basic Types #
 ###############
-G.add_terminal('string', regex=r'\"[^\"]*\"')
 G.add_terminal('int', regex=r'\d+')
+
+
+@G.terminal('string', regex=r'\"')
+def string(lexer: Lexer):
+    text = lexer.text
+    pos = lexer.position + 1
+    lexer.column += 1
+    lex = '\"'
+
+    contains_null_character = False
+    while True:
+        if pos >= len(text):
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: EOF in string constant')
+            return
+
+        s = text[pos]
+
+        if s == '\\':
+            if text[pos + 1] == '\n':
+                lex += '\n'
+                pos += 2
+                lexer.lineno += 1
+                lexer.column = 1
+            elif text[pos + 1] in ('b', 'f', 't', 'n'):
+                if text[pos + 1] == 'b':
+                    lex += '\\b'
+                elif text[pos + 1] == 'f':
+                    lex += '\\f'
+                elif text[pos + 1] == 't':
+                    lex += '\\t'
+                else:
+                    lex += '\\n'
+
+                pos += 2
+                lexer.column += 2
+            else:
+                lex += text[pos + 1]
+                pos += 2
+                lexer.column += 2
+        elif s == '\n':
+            # Unterminated String
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: Unterminated string constant')
+            return
+        elif s == '\0':
+            contains_null_character = True
+            lexer.contain_errors = True
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: String contains null character')
+            pos += 1
+            lexer.column += 1
+        else:
+            lex += s
+            pos += 1
+            lexer.column += 1
+
+            if s == '\"':
+                break
+
+    lexer.position = pos
+    lexer.token.lex = lex
+    if not contains_null_character:
+        return lexer.token
 
 
 ############

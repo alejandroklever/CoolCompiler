@@ -1,0 +1,8 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(49, 23) - SyntacticError: ERROR at or near ";"
+(57, 13) - SyntacticError: ERROR at or near "pool"
+(57, 13) - SyntacticError: Expected ';' instead of 'pool'.
+(58, 31) - SyntacticError: ERROR at or near ""El logaritmo en base 2 de ""
+(58, 60) - SyntacticError: ERROR at or near "."
+(64, 17) - SyntacticError: ERROR at or near "<-"

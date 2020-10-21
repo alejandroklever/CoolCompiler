@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from lexertab import CoolLexer
 from parsertab import CoolParser
@@ -33,68 +33,55 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
     return ast, scope, context, errors
 
 
-def test_inference():
-    paths = []
+def get_programs(folder_name: str) -> Tuple[List[str], List[str]]:
     programs = []
     results = []
 
     cwd = Path.cwd()
-    folder_name = 'inference'
     path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
     for path in sorted(path.iterdir()):
         s = path.open('r').read()
-        if 'program' in path.name:
+        if path.name.endswith('.cl'):
             programs.append(s)
-            paths.append(path.name)
         else:
             results.append(s)
 
-    for path, code, result in zip(paths, programs, results):
+    return programs, results
+
+
+def test_lexer():
+    programs, results = get_programs('lexer')
+
+    for program, result in zip(programs, results):
+        tokens, lexer = tokenize(program)
+        assert lexer.contain_errors and '\n'.join(lexer.errors) == result.strip()
+
+
+def test_parser():
+    programs, results = get_programs('parser')
+
+    total = 20
+    for code, result in zip(programs[total - 1:total], results[total - 1:total]):
         tokens, _ = tokenize(code)
+        ast, parser = parse(tokens)
+        assert parser.contains_errors and '\n'.join(parser.errors) == result
+
+
+def test_inference():
+    programs, results = get_programs('inference')
+
+    for program, result in zip(programs, results):
+        tokens, _ = tokenize(program)
         ast, _ = parse(tokens)
-        ast, scope, context, errors = check_semantics(ast, Scope(), Context(), [])
+        ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
         assert not errors and CodeBuilder().visit(ast, 0) == result
 
 
-def test_syntactic_and_semantic_errors():
-    paths = []
-    programs = []
-    results = []
+def test_semantic():
+    programs, results = get_programs('semantic')
 
-    cwd = Path.cwd()
-    folder_name = 'syntactic_and_semantic_errors'
-    path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
-    for path in sorted(path.iterdir()):
-        s = path.open('r').read()
-        if path.name.endswith('.cl'):
-            programs.append(s)
-            paths.append(path.name)
-        else:
-            results.append(s)
-
-    for path, code, result in zip(paths, programs, results):
+    for code, result in zip(programs, results):
         tokens, _ = tokenize(code)
         ast, parser = parse(tokens)
         ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
-        assert '\n'.join(parser.errors + errors) == result, path
-
-
-def test_lexicographic_errors():
-    paths = []
-    programs = []
-    results = []
-
-    cwd = Path.cwd()
-    folder_name = 'lexicographic_errors'
-    path = cwd / folder_name if str(cwd).endswith('tests') else cwd / 'tests' / folder_name
-    for path in sorted(path.iterdir())[:2 * 2]:
-        s = path.open('r').read()
-        if path.name.endswith('.cl'):
-            programs.append(s)
-            paths.append(path.name)
-        else:
-            results.append(s)
-
-    for path, code, result in zip(paths, programs, results):
-        tokens, lexer = tokenize(code)
-        assert lexer.contain_errors and '\n'.join(lexer.errors) == result.strip(), path
+        assert (parser.contains_errors or errors) and '\n'.join(parser.errors + errors) == result

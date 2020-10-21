@@ -1,0 +1,6 @@
+(21, 5) - SyntacticError: ERROR at or near "Testing2"
+(21, 22) - SyntacticError: ERROR at or near ","
+(21, 22) - SyntacticError: Expected ';' instead of ','.
+(21, 30) - SyntacticError: ERROR at or near ")"
+(21, 30) - SyntacticError: Expected ';' instead of ')'.
+(23, 6) - SyntacticError: ERROR at or near ";"
