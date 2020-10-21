@@ -1,0 +1,5 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(73, 65) - SyntacticError: ERROR at or near "not"
+(73, 81) - SyntacticError: ERROR at or near "Mazinger_Z"
+(73, 121) - SyntacticError: ERROR at or near "fi"

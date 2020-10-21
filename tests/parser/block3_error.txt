@@ -1,0 +1,4 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(57, 13) - SyntacticError: ERROR at or near "pool"
+(60, 5) - SyntacticError: ERROR at or near "}"

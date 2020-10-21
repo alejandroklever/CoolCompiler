@@ -1,7 +1,7 @@
 import inspect
 import time
 
-from pyjapt import Grammar
+from pyjapt import Grammar, Lexer
 
 import semantics.utils.astnodes as ast
 
@@ -64,15 +64,82 @@ G.add_terminal('type', regex=r'[A-Z][a-zA-Z0-9_]*')
 ###############
 # Basic Types #
 ###############
-G.add_terminal('string', regex=r'\"[^\"]*\"')
 G.add_terminal('int', regex=r'\d+')
+
+
+@G.terminal('string', regex=r'\"')
+def string(lexer: Lexer):
+    text = lexer.text
+    pos = lexer.position + 1
+    lexer.column += 1
+    lex = '\"'
+
+    contains_null_character = False
+    while True:
+        if pos >= len(text):
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: EOF in string constant')
+            return
+
+        s = text[pos]
+
+        if s == '\\':
+            if text[pos + 1] == '\n':
+                lex += '\n'
+                pos += 2
+                lexer.lineno += 1
+                lexer.column = 1
+            elif text[pos + 1] in ('b', 'f', 't', 'n'):
+                if text[pos + 1] == 'b':
+                    lex += '\\b'
+                elif text[pos + 1] == 'f':
+                    lex += '\\f'
+                elif text[pos + 1] == 't':
+                    lex += '\\t'
+                else:
+                    lex += '\\n'
+
+                pos += 2
+                lexer.column += 2
+            else:
+                lex += text[pos + 1]
+                pos += 2
+                lexer.column += 2
+        elif s == '\n':
+            # Unterminated String
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: Unterminated string constant')
+            return
+        elif s == '\0':
+            contains_null_character = True
+            lexer.contain_errors = True
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: String contains null character')
+            pos += 1
+            lexer.column += 1
+        else:
+            lex += s
+            pos += 1
+            lexer.column += 1
+
+            if s == '\"':
+                break
+
+    lexer.position = pos
+    lexer.token.lex = lex
+    if not contains_null_character:
+        return lexer.token
 
 
 ############
 # Comments #
 ############
-@G.terminal('comment', r'(\(\*[^$]*\*\))|--.*')
-def comment(lexer):
+@G.terminal('single_line_comment', r'--.*')
+def single_line_comment(lexer):
     lex = lexer.token.lex
     for s in lex:
         if s == '\n':
@@ -82,24 +149,49 @@ def comment(lexer):
     lexer.position += len(lex)
 
 
-@G.terminal('comment_error', r'\(\*(.|\n)*$')
-def comment_eof_error(lexer):
-    lexer.contain_errors = True
-    lex = lexer.token.lex
-    for s in lex:
-        if s == '\n':
-            lexer.lineno += 1
-            lexer.column = 0
-        lexer.column += 1
-    lexer.position += len(lex)
-    lexer.print_error(f'{lexer.lineno, lexer.column} -LexicographicError: EOF in comment')
+@G.terminal('multi_line_comment', r'\(\*')
+def multi_line_comment(lexer: Lexer):
+    stack = ['(*']
+    text = lexer.text
+    pos = lexer.position + 2
+    lex = '(*'
+
+    while stack:
+        if pos >= len(text):
+            lexer.contain_errors = True
+            lexer.position = pos
+            lexer.add_error(lexer.lineno, lexer.column,
+                            f'{lexer.lineno, lexer.column} - LexicographicError: EOF in comment')
+            return None
+
+        if text.startswith('(*', pos):
+            stack.append('(*')
+            pos += 2
+            lex += '(*'
+            lexer.column += 2
+        elif text.startswith('*)', pos):
+            stack.pop()
+            pos += 2
+            lex += '*)'
+            lexer.column += 2
+        else:
+            if text[pos] == '\n':
+                lexer.lineno += 1
+                lexer.column = 0
+            elif text[pos] == '\t':
+                lexer.column += 3
+            lex += text[pos]
+            pos += 1
+            lexer.column += 1
+    lexer.position = pos
+    lexer.token.lex = lex
 
 
 ##################
 # Ignored Tokens #
 ##################
 @G.terminal('newline', r'\n+')
-def newline(lexer):
+def newline(lexer: Lexer):
     lexer.lineno += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
     lexer.column = 1
@@ -119,7 +211,8 @@ def tab(lexer):
 
 @G.lexical_error
 def lexical_error(lexer):
-    lexer.add_error(f'{lexer.lineno, lexer.column} -LexicographicError: ERROR "{lexer.token.lex}"')
+    lexer.add_error(lexer.lineno, lexer.column,
+                    f'{lexer.lineno, lexer.column} - LexicographicError: ERROR "{lexer.token.lex}"')
     lexer.column += len(lexer.token.lex)
     lexer.position += len(lexer.token.lex)
 
@@ -211,37 +304,37 @@ G.add_terminal_error()
 
 @G.production("feature-list -> attribute error feature-list")
 def feature_attribute_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 
 @G.production("feature-list -> method error feature-list")
 def feature_method_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 
 @G.production("case-list -> id : type => expr error")
 def case_list_error(s):
-    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
+    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'.")
     return [(s[1], s[3], s[5])]
 
 
 @G.production("case-list -> id : type => expr error case-list")
 def case_list_error(s):
-    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'")
+    s.add_error(6, f"{s[6].line, s[6].column} - SyntacticError: Expected ';' instead of '{s[6].lex}'.")
     return [(s[1], s[3], s[5])] + s[7]
 
 
 @G.production("block -> expr error")
 def block_single_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]]
 
 
 @G.production("block -> expr error block")
 def block_single_error(s):
-    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'")
+    s.add_error(2, f"{s[2].line, s[2].column} - SyntacticError: Expected ';' instead of '{s[2].lex}'.")
     return [s[1]] + s[3]
 
 

@@ -1,0 +1,6 @@
+(31, 2) - SyntacticError: ERROR at or near ";"
+(37, 84) - SyntacticError: ERROR at or near ")"
+(42, 13) - SyntacticError: ERROR at or near ":"
+(42, 13) - SyntacticError: Expected ';' instead of ':'.
+(44, 5) - SyntacticError: Expected ';' instead of '}'.
+(45, 2) - SyntacticError: ERROR at or near "$"

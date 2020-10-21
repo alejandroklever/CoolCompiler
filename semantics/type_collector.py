@@ -10,7 +10,7 @@ class TypeCollector:
 
     Params
     ----------
-    - errors: List[str] is a list of errors detected in the ast travel
+    - syntactic_and_semantic_errors: List[str] is a list of syntactic_and_semantic_errors detected in the ast travel
     - context: Context the context for keeping the classes"""
 
     def __init__(self, context: Context = Context(), errors: List[str] = []):

@@ -38,8 +38,8 @@ class CodeBuilder:
                 declarations.append(f'{_id}: {_type} <- {self.visit(_expr)}')
             else:
                 declarations.append(f'{_id} : {_type}')
-        declarations = ('\n' + '    ' * (tabs + 1)).join(declarations)
-        return '    ' * tabs + f'let {declarations} in \n{self.visit(node.expr, tabs + 1)}'
+        declarations = (',\n' + '    ' * (tabs + 1)).join(declarations)
+        return '    ' * tabs + f'let {declarations} in\n{self.visit(node.expr, tabs + 1)}'
 
     @visitor.when(ast.AssignNode)
     def visit(self, node: ast.AssignNode, tabs: int = 0):
@@ -92,11 +92,12 @@ class CodeBuilder:
 
     @visitor.when(ast.AtomicNode)
     def visit(self, node: ast.AtomicNode, tabs: int = 0):
-        return '    ' * tabs + f'{node.lex}'
+        lex = node.lex
+        return '    ' * tabs + f'{lex}'
 
     @visitor.when(ast.InstantiateNode)
     def visit(self, node: ast.InstantiateNode, tabs: int = 0):
-        return '    ' * tabs + f'new {node.lex}'
+        return '    ' * tabs + f'(new {node.lex})'
 
 
 class Formatter:

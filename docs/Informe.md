@@ -2,21 +2,38 @@
 
 # Segundo Proyecto de Programacion
 
-## Inferencia de tipos en el lenguaje de programacion *COOL*, una aproximacion a traves de grafos
+## Inferencia de tipos en el lenguaje de programacion *COOL*, una aproximacion a través de grafos
+
+## Estudiantes
+
+    - Alejandro Klever Clemente C-311
+    - Miguel Angel Gonzalez Calles C-311
 
 </div>
 
 ## Indice
 
 - 1 Inferencia de tipos.
+
   - 1.1 Algoritmo y Grafo de Dependecias.
+
   - 1.2 Nodos de Dependencia.
+
   - 1.3 Casos factibles.
+
     - 1.3.1 Ejemplos de casos Factibles para la Inferencia.
+
   - 1.4 Casos No factibles.
+
     - 1.4.1 Casos Generales.
+
     - 1.4.2 Casos Particulares.
-  - 1.5 Expresiones atomicas.
+
+  - 1.5 expresiónes atomicas.
+
+- 2 CLI-API
+
+- 3 Lexing y Parsing
 
 ## 1 Inferencia de Tipos
 
@@ -24,27 +41,27 @@ COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje n
 
 Nuestro algoritmo de inferencia de tipos se apoya en el uso basico de la teoria de grafos y en el uso del patron de diseno visitor.
 
-La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable, parametro de funcion o retorno de funcion el primer tipo que le puede ser asignado, modificando en el arbol de sintaxis abstracta el string `AUTO_TYPE` por el nombre del tipo correspondiente y asignando los tipos correspondientes en el contexto y el ambito en que seon declarados.
+La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable, parámetro de función o retorno de función el primer tipo que le puede ser asignado, modificando en el árbol de sintaxis abstracta el string `AUTO_TYPE` por el nombre del tipo correspondiente y asignando los tipos correspondientes en el contexto y el ambito en que seon declarados.
 
 ### 1.1 Algoritmo y Grafo de Dependecias
 
-***Entrada :*** Un arbol de sintaxis abstracta, un contexto con todos los tipos declarados en el programa de COOL.
+***Entrada :*** Un árbol de sintaxis abstracta, un contexto con todos los tipos declarados en el programa de COOL.
 
-***Salida :*** Un Arbol de Sintaxis Abstracta, Un Contexto y un Scope con tipos bien tagueados.
+***Salida :*** Un árbol de Sintaxis Abstracta, Un Contexto y un Scope con tipos bien tagueados.
 
-***Algoritmo :*** Durante el recorrido del AST sera construido un grafo dirigido cuyos nodos encerraran el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresion cuyo tipo estatico es marcado como `AUTO_TYPE`, y sea `E2` una expresion a partir de a cual se puede inferir el tipo de estatico de E1 entonces en el grafo existira la arista `<E2, E1>`. Una vez construido el arbol se comenzara una cadena de expansion de tipos estaticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresion con tipo estatico definido, al cual llamaremos atomo. Cuando todos los atomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos seran marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
+***Algoritmo :*** Durante el recorrido del AST será construido un grafo dirigido cuyos nodos encerrarán el concepto de las expresiónes marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiónes de estos nodos para inferir su tipo. Sea `E1` una expresión cuyo tipo estático es marcado como `AUTO_TYPE`, y sea `E2` una expresión a partir de a cual se puede inferir el tipo de estático de E1 entonces en el grafo existira la arista `<E2, E1>`. Una vez construido el árbol se comenzara una cadena de expansion de tipos estáticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresión con tipo estático definido, al cual llamaremos atomo. Cuando todos los átomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos serán marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
 ### 1.2 Nodos de Dependencia
 
-Cada nodo del grafo sera una abstraccion de un concepto en el que se use un tagueo explicito de `AUTO_TYPE` y tendra las referencias a las partes del proceso de semantica del programa, ademas de que cada nodo contara con un metodo `update(type)` el cual actualiza el tipo estatico de estos conceptos.
+Cada nodo del grafo será una abstracción de un concepto en el que se use un tagueo explicito de `AUTO_TYPE` y tendra las referencias a las partes del proceso de semantica del programa, ademas de que cada nodo contara con un metodo `update(type)` el cual actualiza el tipo estático de estos conceptos.
 
 ```python
 class DependencyNode:
     pass
 
 class AtomNode(DependencyNode):
-    """Nodo base el cual es creado a partir de expresiones que
-    contienen tipo estatico u operaciones aritmeticas"""
+    """Nodo base el cual es creado a partir de expresiónes que
+    contienen tipo estático u operaciones aritméticas"""
     pass
 
 class AttributeNode(DependencyNode):
@@ -52,11 +69,11 @@ class AttributeNode(DependencyNode):
     pass
 
 class ParameterNode(DependencyNode):
-    """Parametro de una funcion"""
+    """parámetro de una función"""
     pass
 
 class ReturnTypeNode(DependencyNode):
-    """Tipo de retorno de una funcion"""
+    """Tipo de retorno de una función"""
     pass
 
 class VariableInfoNode(DependencyNode):
@@ -66,25 +83,25 @@ class VariableInfoNode(DependencyNode):
 
 ### 1.3 Casos factibles
 
-Funcionando de manera analoga para atributos, variables, parametros y retorno de funciones. Explicado de forma recursiva puede ser visto como:
+Funcionando de manera análoga para atributos, variables, parámetros y retorno de funciones. Explicado de forma recursiva puede ser visto como:
 
-- Un `AUTO_TYPE` sera sustituido por su tipo correspodiente si este forma parte de una operacion que permita saber su tipo, o es asignado a una expresion de la cual es posible determinar su tipo.
+- Un `AUTO_TYPE` será sustituido por su tipo correspodiente si este forma parte de una operacion que permita saber su tipo, o es asignado a una expresión de la cual es posible determinar su tipo.
 
 - Es importante senalar en que contexto estas dependencias son tomadas en cuenta:
 
-  - Para los atributos marcados como autotype su tipo podra ser determinado dentro del cuerpo de cualquiera de las funciones de la clase o si es detectable el tipo de la expresion de inicializacion.
+  - Para los atributos marcados como autotype su tipo podra ser determinado dentro del cuerpo de cualquiera de las funciones de la clase o si es detectable el tipo de la expresión de inicializacion.
 
-  - Para las variables su tipo sera determinado dentro del scope donde estas son validas.
+  - Para las variables su tipo será determinado dentro del scope donde estas son validas.
 
-- Para los parametros su tipo sera determinado dentro del cuerpo de la funcion o cuando esta sea funcion sea llamada a traves de una operacion de dispatch.
+- Para los parámetros su tipo será determinado dentro del cuerpo de la función o cuando esta sea función sea llamada a traves de una operacion de dispatch.
 
-- Para los retornos de funciones, su tipo sera determinado con su expresion y los llamados a dicha funcion a traves de una operacion de dispatch.
+- Para los retornos de funciones, su tipo será determinado con su expresión y los llamados a dicha función a traves de una operacion de dispatch.
 
-- En las expresiones if-then-else o case-of asignan automaticamente el tipo `Object` por el momento debido a la complejidad que supone la operacion `join` en el los case y en las clausulas then-else.
+- En las expresiónes if-then-else o case-of asignan automaticamente el tipo `Object` por el momento debido a la complejidad que supone la operacion `join` en el los case y en las clausulas then-else.
 
-### 1.3.1 Ejemplos de casos Factibles para la Inferencia
+### 1.3.1 Ejemplos de casos factibles para la inferencia
 
-En este caso la expresion `d + 1` desambigua a `d` en un `Int` y luego `c` se infiere de `d`, `b` se infiere de `c`, `a` se infiere de `b` y el retorno de la funcion de infiere de `a`. Quedando todos los parametros y el retorno de la funcion marcados como `Int`.
+En este caso la expresión `d + 1` desambigua a `d` en un `Int` y luego `c` se infiere de `d`, `b` se infiere de `c`, `a` se infiere de `b` y el retorno de la función de infiere de `a`. Quedando todos los parámetros y el retorno de la función marcados como `Int`.
 
 ```typescript
 class Main {
@@ -101,7 +118,7 @@ class Main {
 }
 ```
 
-Similar al caso anterior pero enesta ocacion incluyendo atributos, la expresion los `x + y` infiere a los parametros `x` y `y` como `Int` y tambien al atributo `b`, `a` se infiere de `b`. El tipo de retorno de `create_point()` se infiere de su porpia cuerpo con la expression `new Point` y esta a su vez infiere el tipo de retorno de `init()`.
+Similar al caso anterior pero en esta ocasión incluyendo atributos, la expresión los `x + y` infiere a los parámetros `x` y `y` como `Int` y tambien al atributo `b`, `a` se infiere de `b`. El tipo de retorno de `create_point()` se infiere de su porpia cuerpo con la expression `new Point` y esta a su vez infiere el tipo de retorno de `init()`.
 
 ```typescript
 class Point {
@@ -118,7 +135,7 @@ class Point {
 }
 ```
 
-Probando con funciones recursivas tenemos el caso de fibonacci tipo de `n` se infiere al ser usado en las expresiones `n <= 2`, `n - 1`, `n - 2`, las cuales lo marcan como `Int`, `fibonacci(n - 1) + fibonacci(n - 2)` marca al retorno de la funcion como `Int` y y la expresion if-then-else lo marca como `Object`. en este ultimo caso la expresion `fibonacci(n - 1) + fibonacci(n - 2)` termina de analizarse primero que la expresion if-then-else por lo cual el tipo de retorno sera `Int` el cual fue el primero que se definio, lo cual demuestra que el orden en el que se analizan las inferencias importan de las inferencias importan.
+Probando con funciones recursivas tenemos el caso de fibonacci tipo de `n` se infiere al ser usado en las expresiónes `n <= 2`, `n - 1`, `n - 2`, las cuales lo marcan como `Int`, `fibonacci(n - 1) + fibonacci(n - 2)` marca al retorno de la función como `Int` y y la expresión if-then-else lo marca como `Object`. en este ultimo caso la expresión `fibonacci(n - 1) + fibonacci(n - 2)` termina de analizarse primero que la expresión if-then-else por lo cual el tipo de retorno será `Int` el cual fue el primero que se definio, lo cual demuestra que el orden en el que se analizan las inferencias importan de las inferencias importan.
 
 ```typescript
 class Main {
@@ -128,7 +145,7 @@ class Main {
 }
 ```
 
-El caso de Ackerman es bastante interesante, en nuestro algoritmo importa el orden en el que fueron definidas las dependencias. `m` y `n` son inferibles como `Int` a partir de las expresiones `n + 1` y `m - 1` respectivamente, y el tipo de retorno de `ackermann` en inferible por `n` al ser usado como segundo parametro en un llamado de si mismo, por lo cual sera `Int`. La influencia de la expresion if-then-else se ve anulada por el orden de inferencia.
+El caso de Ackerman es bastante interesante, en nuestro algoritmo importa el orden en el que fueron definidas las dependencias. `m` y `n` son inferibles como `Int` a partir de las expresiónes `n + 1` y `m - 1` respectivamente, y el tipo de retorno de `ackermann` en inferible por `n` al ser usado como segundo parámetro en un llamado de si mismo, por lo cual será `Int`. La influencia de la expresión if-then-else se ve anulada por el orden de inferencia.
 
 ```typescript
 class Main {
@@ -144,11 +161,11 @@ class Main {
 
 ### 2.4 Casos No factibles
 
-No es posible determinar el tipo de una variable, atributo, parametro, o retorno de funcion si para este se cumple el caso general y su caso especifico correspondiente.
+No es posible determinar el tipo de una variable, atributo, parámetro, o retorno de función si para este se cumple el caso general y su caso especifico correspondiente.
 
 ### 2.4.1 Casos generales
 
-El tipo es utilizado en expresiones que no permiten determinar su tipo, o solo se logra determinar que poseen el mismo tipo que otras variables, atributos, parametros o retorno de funciones de las cuales tampoco se puede determinar el mismo.
+El tipo es utilizado en expresiónes que no permiten determinar su tipo, o solo se logra determinar que poseen el mismo tipo que otras variables, atributos, parámetros o retorno de funciones de las cuales tampoco se puede determinar el mismo.
 
 ```typescript
 class Main {
@@ -169,7 +186,7 @@ class Main {
 }
 ```
 
-En este ejemplo solo es posible inferir el typo del parametro `n` de la funcion `factorial`, su tipo de retorno, el parametro `a` de la funcion `function`, su tipo de retorno y el atributo `b` de la clase `Main`, el resto sera marcado como `Object`.
+En este ejemplo solo es posible inferir el typo del parámetro `n` de la función `factorial`, su tipo de retorno, el parámetro `a` de la función `function`, su tipo de retorno y el atributo `b` de la clase `Main`, el resto será marcado como `Object`.
 
 ### 2.4.2 Casos Particulares
 
@@ -185,7 +202,7 @@ class Main inherits IO {
 }
 ```
 
-***Para parametros:*** si dentro del cuerpo de la funcion estas no son utilizadas y no existe otra funcion que llame a esta con argumentos con tipado estatico definidos seran marcadas como `Object`:
+***Para parámetros:*** si dentro del cuerpo de la función estas no son utilizadas y no existe otra función que llame a esta con argumentos con tipado estático definidos serán marcadas como `Object`:
 
 ```typescript
 class Main inherits IO {
@@ -195,7 +212,7 @@ class Main inherits IO {
 }
 ```
 
-***Para atributos:*** si no es posible determinar el tipo de la expresion de inicializacion o si dentro del cuerpo de todas las funciones de su clase correspondiente este no son utilizadas, seran marcadas como `Objects`.
+***Para atributos:*** si no es posible determinar el tipo de la expresión de inicializacion o si dentro del cuerpo de todas las funciones de su clase correspondiente este no son utilizadas, serán marcadas como `Objects`.
 
 ```typescript
 class Main inherits IO {
@@ -209,7 +226,7 @@ class Main inherits IO {
 }
 ```
 
-***Para el retorno de funciones:*** si no es posible determinar el tipo de su expresion.
+***Para el retorno de funciones:*** si no es posible determinar el tipo de su expresión.
 
 ```typescript
 class Main inherits IO {
@@ -219,11 +236,11 @@ class Main inherits IO {
 }
 ```
 
-### 2.5 Expresiones atomicas
+### 2.5 expresiónes atomicas
 
-- Valores Constantes.
+- Valores constantes.
 
-- Operaciones aritmeticas.
+- Operaciones aritméticas.
 
 - Operaciones logicas.
 
@@ -233,4 +250,33 @@ class Main inherits IO {
 
 - Variables de las cuales se conoce su tipo.
 
-- Bloques donde se puede determinar el tipo de la ultima expresion.
+- Bloques donde se puede determinar el tipo de la ultima expresión.
+
+## 2 CLI-API
+
+Para la comoda utilizacion del interprete hemos usado el paquete de python `typer` para crear una api-cli bastante sencilla, basta co ejecutar el comando `python cool.py --help` y otendra como salida lo siguiente:
+
+    Usage: cool.py [OPTIONS] COMMAND [ARGS]...
+
+    Options:
+    --install-completion  Install completion for the current shell.
+    --show-completion     Show completion for the current shell, to copy it or
+                            customize the installation.
+
+    --help                Show this message and exit.
+
+    Commands:
+    infer
+    run
+
+Se se puede apreciar existen 2 comandos principales:
+
+- `infer` el cual recibe un archivo .cl con un programa en COOL con tipos `AUTO_TYPE`  y devuelve un programa en COOL con todos los `AUTO_TYPE` reemplazados por sus tipos correspondientes.
+
+- `run` el cual recibe como entrada un archivo .cl con un programa en COOL y ejecuta dicho programa.
+
+- En ambos casos se tiene como parámetro adicional el `--verbose` para observar los distintos procesos por los que pasa la el proceso de compilación
+
+## 3 Lexing y Parsing
+
+Para el proceso de lexing y parsing usamos el paquete de python `pyjapt` cuyos autores coinciden con los de este proyecto.

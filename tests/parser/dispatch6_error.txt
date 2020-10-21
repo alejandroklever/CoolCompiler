@@ -1,0 +1,2 @@
+(49, 15) - SyntacticError: ERROR at or near "object"
+(53, 13) - SyntacticError: ERROR at or near "inherits"

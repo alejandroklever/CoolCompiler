@@ -1,0 +1,4 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(44, 5) - SyntacticError: Expected ';' instead of 'pow'.
+(56, 17) - SyntacticError: Expected ';' instead of '}'.

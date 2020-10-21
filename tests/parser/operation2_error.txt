@@ -1,0 +1,5 @@
+(33, 9) - SyntacticError: ERROR at or near "If"
+(33, 36) - SyntacticError: ERROR at or near "THeN"
+(73, 41) - SyntacticError: ERROR at or near "int"
+(77, 13) - SyntacticError: ERROR at or near "{"
+(80, 15) - SyntacticError: ERROR at or near ":"

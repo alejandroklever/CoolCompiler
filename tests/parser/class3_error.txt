@@ -1,0 +1,1 @@
+(25, 5) - SyntacticError: Expected ';' instead of 'testing3'.
