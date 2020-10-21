@@ -35,6 +35,8 @@
 
 - 3 Lexing y Parsing
 
+- 4 Testing
+
 ## 1 Inferencia de Tipos
 
 COOL es un lenguaje de programacion estaticamente tipado, y aunque el lenguaje no presenta inferencia de tipos esta es una caracteristica muy util que incorporaremos en un nuestro interprete.
@@ -280,3 +282,7 @@ Se se puede apreciar existen 2 comandos principales:
 ## 3 Lexing y Parsing
 
 Para el proceso de lexing y parsing usamos el paquete de python `pyjapt` cuyos autores coinciden con los de este proyecto.
+
+## 4 Testing
+
+En la carpeta `tests` se encuentra las carpetas `execution`, `inference`, `lexer`, `parser`, `semantic` las cuales contienen casos de pruebas para correr todas las pruebas basta con hacer `pytest tests` y se probaran todos los casos menos los de la carpeta `execution`, la cual contiene programa en cool que deberan ser ejecutados a mano usando la cli-api de nuestro interprete.
