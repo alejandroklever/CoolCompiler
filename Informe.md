@@ -11,32 +11,6 @@ Estudiantes:
 >    - Alejandro Klever Clemente C-311
 >    - Miguel Angel Gonzalez Calles C-311
 
-## Indice:
-
-- 1 Inferencia de tipos.
-
-  - 1.1 Algoritmo y Grafo de Dependecias.
-
-  - 1.2 Nodos de Dependencia.
-
-  - 1.3 Casos factibles.
-
-    - 1.3.1 Ejemplos de casos factibles para la inferencia.
-
-  - 1.4 Casos No factibles.
-
-    - 1.4.1 Casos Generales.
-
-    - 1.4.2 Casos Particulares.
-
-  - 1.5 Expresiones atómicas.
-
-- 2 CLI-API
-
-- 3 Lexing y Parsing
-
-- 4 Testing
-
 ### 1 Inferencia de Tipos
 
 COOL es un lenguaje de programación estáticamente tipado, y aunque el lenguaje no presenta inferencia de tipos, esta es una característica muy útil que incorporaremos en un nuestro intérprete.
