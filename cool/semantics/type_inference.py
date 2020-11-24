@@ -1,6 +1,6 @@
 """The type inference algorithm consist in a dependency di-graph with special nodes to handle the behavior of the
 updates of components in the code and solve it in the `context`. For that we crate an structure called
-DependencyGraph where we can create nodes as an structure called DependencyNode and arcs between them, and arc e =
+DependencyGraph where we can create nodes as an structure called DependencyNode and arcs between them, an arc e =
 <x,y> where x and y are dependency nodes means that the type of node y is inferred by the type of node x,
 so for solve the type of y we need first to infer the type of x. For this operation we need some basic nodes that
 only contains the type of the node called AtomNode and in the digraph formation an AtomNode is never inferred from
@@ -32,15 +32,15 @@ DependencyNode hierarchy
         - method : Reference to the method of the class
 
 All nodes has an implementation of the method update that handle how to update the type by it's dependencies
-
 """
-from collections import deque, OrderedDict
-from typing import Dict, List, Tuple, Set, Optional
+from collections import OrderedDict, deque
+from typing import Dict, List, Optional, Set, Tuple
 
 import semantics.utils.astnodes as ast
 import semantics.utils.errors as err
 import semantics.visitor as visitor
-from semantics.utils.scope import Type, Attribute, Method, Scope, Context, SemanticError, ErrorType, VariableInfo
+from semantics.utils.scope import (Attribute, Context, ErrorType, Method,
+                                   Scope, SemanticError, Type, VariableInfo)
 
 
 class DependencyNode:

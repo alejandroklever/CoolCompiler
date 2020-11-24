@@ -1,5 +1,3 @@
-from enum import Enum, auto
-
 from collections import OrderedDict
 from typing import List, Optional, Dict, Tuple, Union
 
@@ -230,9 +228,9 @@ class Context:
 
 
 class VariableInfo:
-    def __init__(self, name, vtype):
+    def __init__(self, name, var_type):
         self.name: str = name
-        self.type: Type = vtype
+        self.type: Type = var_type
 
     def __str__(self):
         return self.name + ': ' + self.type.name

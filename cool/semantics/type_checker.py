@@ -3,7 +3,8 @@ from typing import List
 import semantics.utils.astnodes as ast
 import semantics.utils.errors as err
 import semantics.visitor as visitor
-from semantics.utils.scope import Context, SemanticError, Type, Method, Scope, ErrorType
+from semantics.utils.scope import (Context, ErrorType, Method, Scope,
+                                        SemanticError, Type)
 
 
 class TypeChecker:
