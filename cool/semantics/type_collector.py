@@ -1,8 +1,8 @@
 from typing import List
 
-import semantics.utils.astnodes as ast
-import semantics.visitor as visitor
-from semantics.utils.scope import Context, SemanticError
+import cool.semantics.utils.astnodes as ast
+import cool.semantics.visitor as visitor
+from cool.semantics.utils.scope import Context, SemanticError
 
 
 class TypeCollector:

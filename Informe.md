@@ -39,9 +39,9 @@ Estudiantes:
 
 ### 1 Inferencia de Tipos
 
-COOL es un lenguaje de programación estáticamente tipado, y aunque el lenguaje no presenta inferencia de tipos, esta es una característica muy util que incorporaremos en un nuestro intérprete.
+COOL es un lenguaje de programación estáticamente tipado, y aunque el lenguaje no presenta inferencia de tipos, esta es una característica muy útil que incorporaremos en un nuestro intérprete.
 
-Nuestro algoritmo de inferencia de tipos se apoya en el uso básico de la teoría de grafos y en el uso del patrón de diseño visitor.
+Nuestra solución a la inferencia de tipos se apoya en el uso básico de la teoría de grafos y en el uso del patrón de diseño visitor.
 
 La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable, parámetro de función o retorno de función el primer tipo que le puede ser asignado, modificando en el árbol de sintaxis abstracta el string `AUTO_TYPE` por el nombre del tipo correspondiente y asignando los tipos correspondientes en el contexto y el ámbito en que seon declarados.
 
@@ -73,7 +73,7 @@ class AttributeNode(DependencyNode):
     pass
 
 class ParameterNode(DependencyNode):
-    """parámetro de una función"""
+    """Parámetro de una función"""
     pass
 
 class ReturnTypeNode(DependencyNode):
@@ -304,9 +304,9 @@ class Main inherits IO {
 
 ### 2 CLI-API
 
-Para la cómoda utilizacion del intérprete hemos usado el paquete de python `typer` para crear una api-cli bastante sencilla, basta con ejecutar el comando `python cool.py --help` y obtendrá como salida lo siguiente:
+Para la cómoda utilizacion del intérprete hemos usado el paquete de python `typer` para crear una api-cli bastante sencilla, basta con ejecutar el comando `python cool --help` y obtendrá como salida lo siguiente:
 
-    Usage: cool.py [OPTIONS] COMMAND [ARGS]...
+    Usage: cool [OPTIONS] COMMAND [ARGS]...
 
     Options:
     --install-completion  Install completion for the current shell.
@@ -318,12 +318,15 @@ Para la cómoda utilizacion del intérprete hemos usado el paquete de python `ty
     Commands:
     infer
     run
+    serialize
 
-Se se puede apreciar existen 2 comandos principales:
+Se se puede apreciar existen 3 comandos principales:
 
 - `infer` el cual recibe un archivo .cl con un programa en COOL con tipos `AUTO_TYPE`  y devuelve un programa en COOL con todos los `AUTO_TYPE` reemplazados por sus tipos correspondientes.
 
 - `run` el cual recibe como entrada un archivo .cl con un programa en COOL y ejecuta dicho programa.
+
+- `serialize` el cual vuelve a generar y serializar el parser y el lexer del lenguaje tras hacer modificaciones en su gramática. (Pensado para los desarrolladores)
 
 - En ambos casos se tiene como parámetro adicional el `--verbose` para observar los distintos procesos por los que pasa el proceso de compilación.
 

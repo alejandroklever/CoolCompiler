@@ -3,7 +3,7 @@ import time
 
 from pyjapt import Grammar, Lexer
 
-import semantics.utils.astnodes as ast
+import cool.semantics.utils.astnodes as ast
 
 G = Grammar()
 
@@ -338,8 +338,15 @@ def block_single_error(s):
     return [s[1]] + s[3]
 
 
-if __name__ == '__main__':
+#################
+# Serialize API #
+#################
+def serialize_parser_and_lexer():
     t = time.time()
     G.serialize_lexer('CoolLexer', inspect.getmodulename(__file__))
     G.serialize_parser('lalr1', 'CoolParser', inspect.getmodulename(__file__))
     print('Serialization Time :', time.time() - t, 'seconds')
+
+
+if __name__ == '__main__':
+    serialize_parser_and_lexer()

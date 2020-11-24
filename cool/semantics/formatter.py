@@ -1,5 +1,5 @@
-import semantics.utils.astnodes as ast
-import semantics.visitor as visitor
+import cool.semantics.utils.astnodes as ast
+import cool.semantics.visitor as visitor
 
 
 class CodeBuilder:

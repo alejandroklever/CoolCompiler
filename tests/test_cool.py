@@ -1,19 +1,12 @@
-import os
-import subprocess
-import sys
-import tempfile
-
 from pathlib import Path
 from typing import List, Tuple
 
-sys.path.append(os.path.join(os.getcwd(), 'cool'))
 from cool.lexertab import CoolLexer
 from cool.parsertab import CoolParser
 from cool.semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
+from cool.semantics.formatter import CodeBuilder
 from cool.semantics.type_inference import InferenceChecker
 from cool.semantics.utils.scope import Context, Scope
-
-
 
 
 def tokenize(code):
@@ -56,34 +49,32 @@ def get_programs(folder_name: str) -> Tuple[List[str], List[str]]:
     return programs, results
 
 
+def test_lexer():
+    programs, results = get_programs('lexer')
+
+    for program, result in zip(programs, results):
+        tokens, lexer = tokenize(program)
+        assert lexer.contain_errors and '\n'.join(lexer.errors) == result.strip()
 
 
-# def test_lexer():
-#     programs, results = get_programs('lexer')
-#
-#     for program, result in zip(programs, results):
-#         tokens, lexer = tokenize(program)
-#         assert lexer.contain_errors and '\n'.join(lexer.errors) == result.strip()
-#
-#
-# def test_parser():
-#     programs, results = get_programs('parser')
-#
-#     total = 20
-#     for code, result in zip(programs[total - 1:total], results[total - 1:total]):
-#         tokens, _ = tokenize(code)
-#         ast, parser = parse(tokens)
-#         assert parser.contains_errors and '\n'.join(parser.errors) == result
+def test_parser():
+    programs, results = get_programs('parser')
+
+    total = 20
+    for code, result in zip(programs[total - 1:total], results[total - 1:total]):
+        tokens, _ = tokenize(code)
+        ast, parser = parse(tokens)
+        assert parser.contains_errors and '\n'.join(parser.errors) == result
 
 
-# def test_inference():
-#     programs, results = get_programs('inference')
-#
-#     for program, result in zip(programs, results):
-#         tokens, _ = tokenize(program)
-#         ast, _ = parse(tokens)
-#         ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
-#         assert not errors and CodeBuilder().visit(ast, 0) == result
+def test_inference():
+    programs, results = get_programs('inference')
+
+    for program, result in zip(programs, results):
+        tokens, _ = tokenize(program)
+        ast, _ = parse(tokens)
+        ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
+        assert not errors and CodeBuilder().visit(ast, 0) == result
 
 
 def test_semantic():
@@ -94,7 +85,7 @@ def test_semantic():
         tokens, _ = tokenize(code)
         ast, parser = parse(tokens)
         ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
-        # assert (parser.contains_errors or errors) and '\n'.join(parser.errors + errors) == result
+        assert (parser.contains_errors or errors) and '\n'.join(parser.errors + errors) == result
 
 
 test_semantic()

@@ -1,7 +1,7 @@
 import re
 
 from pyjapt import Token, Lexer
-from grammar import G
+from cool.grammar import G
 
 
 class CoolLexer(Lexer):

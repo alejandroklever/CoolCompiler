@@ -1,9 +1,9 @@
 from typing import List, Optional
 
-import semantics.utils.astnodes as ast
-import semantics.utils.errors as err
-import semantics.visitor as visitor
-from semantics.utils.scope import Context, SemanticError, Type, ErrorType
+import cool.semantics.utils.astnodes as ast
+import cool.semantics.utils.errors as err
+import cool.semantics.visitor as visitor
+from cool.semantics.utils.scope import Context, SemanticError, Type, ErrorType
 
 
 class TypeBuilder:

@@ -1,15 +1,21 @@
+import os
+import sys
+
+sys.path.append(os.getcwd())
+
 from pathlib import Path
 from typing import List
 
 import typer
 
-from lexertab import CoolLexer
-from parsertab import CoolParser
-from semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
-from semantics.execution import Executor, ExecutionError
-from semantics.formatter import CodeBuilder
-from semantics.type_inference import InferenceChecker
-from semantics.utils.scope import Context, Scope
+from cool.grammar import serialize_parser_and_lexer
+from cool.lexertab import CoolLexer
+from cool.parsertab import CoolParser
+from cool.semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
+from cool.semantics.execution import Executor, ExecutionError
+from cool.semantics.formatter import CodeBuilder
+from cool.semantics.type_inference import InferenceChecker
+from cool.semantics.utils.scope import Context, Scope
 
 app = typer.Typer()
 
@@ -88,6 +94,33 @@ def run(file: str, verbose: bool = False):
         for error in errors:
             typer.echo(error, err=True)
 
+
+@app.command()
+def serialize():
+    serialize_parser_and_lexer()
+
+    cwd = os.getcwd()
+
+    lexertab = os.path.join(cwd, 'lexertab.py')
+    parsertab = os.path.join(cwd, 'parsertab.py')
+
+    cool_lexertab = Path(os.path.join(cwd, 'cool', 'lexertab.py'))
+    cool_parsertab = Path(os.path.join(cwd, 'cool', 'parsertab.py'))
+
+    mode = 'w' if cool_lexertab.exists() else 'x'
+    fr = open(lexertab, 'r')
+    with cool_lexertab.open(mode) as fw:
+        fw.write(fr.read().replace('from grammar', 'from cool.grammar'))
+        fr.close()
+
+    mode = 'w' if cool_parsertab.exists() else 'x'
+    fr = open(parsertab, 'r')
+    with cool_parsertab.open(mode) as fw:
+        fw.write(fr.read().replace('from grammar', 'from cool.grammar'))
+        fr.close()
+
+    os.remove(lexertab)
+    os.remove(parsertab)
 
 if __name__ == '__main__':
     app()
