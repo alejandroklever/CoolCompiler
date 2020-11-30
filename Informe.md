@@ -25,9 +25,9 @@ La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable,
 
 **Salida :** Un árbol de Sintaxis Abstracta, Un Contexto y un Scope con tipos bien tagueados.
 
-**Algoritmo :** Durante el recorrido del AST será construido un grafo dirigido cuyos nodos encerrarán el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresión cuyo tipo estático es marcado como `AUTO_TYPE`, y sea `E2` una expresión a partir de a cual se puede inferir el tipo de estático de `E1` entonces en el grafo existirá la arista `<E2, E1>`. Una vez construido el árbol se comenzará una cadena de expansión de tipos estáticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresión con tipo estático definido, al cual llamaremos átomo. Cuando todos los átomos se hayan propagado a traves del grafo los nodos que no hayan podido ser resueltos serán marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
+**Algoritmo :** Durante el recorrido del AST será construido un grafo dirigido cuyos nodos encerrarán el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresión cuyo tipo estático es marcado como `AUTO_TYPE`, y sea `E2` una expresión a partir de a cual se puede inferir el tipo de estático de `E1` entonces en el grafo existirá la arista `<E2, E1>`. Una vez construido el árbol se comenzará una cadena de expansión de tipos estáticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresión con tipo estático definido, al cual llamaremos átomo. Cuando todos los átomos se hayan propagado a través del grafo los nodos que no hayan podido ser resueltos serán marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
-**Implementación :** Para eso creamos una estructura llamada `DependencyGraph` donde podemos crear nodos como una estructura llamada `DependencyNode` y arcos entre ellos. La estructura `DependencyGraph` consiste en un `OrderedDict` de nodos contra lista de adyacencia. Esta lista de adyacencia contiene los nodos a los cuales la llave propagar su tipo, estos nodos de la lista tienen un orden y esto es fundamental para el algoritmo de solución de inferencia. Si tenemos un caso `{x: [y, z]}` donde `x`, `y`, `z` son nodos, entonces el algoritmo determinará el tipo de `y` todas sus cadenas de expansión antes de comenzar con `z`, aunque si `z` forma parte de una cadena de expansión de `y` entonces `x` no propagará su tipo a `z` ya que otro nodo lo hizo antes (un DFS simple).
+**Implementación :** Para eso creamos una estructura llamada `DependencyGraph` donde podemos crear nodos como una estructura llamada `DependencyNode` y arcos entre ellos. La estructura `DependencyGraph` consiste en un `OrderedDict` de nodos contra lista de adyacencia. Esta lista de adyacencia contiene los nodos a los cuales la llave propagar su tipo, estos nodos de la lista tienen un orden y esto es fundamental para el algoritmo de solución de inferencia. Si tenemos un caso `{x: [y, z]}` donde `x`, `y`, `z` son nodos, entonces el algoritmo determinará el tipo de `y` y `z` antes de continuar con todas sus cadenas de expansión, por lo que si `z` forma parte de una cadena de expansión de `y` entonces `y` no propagará su tipo a `z` ya que `x` lo hizo antes (un BFS simple).
 
 #### 1.2 Nodos de Dependencia
 
@@ -71,11 +71,11 @@ El algoritmo funciona de manera análoga para atributos, variables, parámetros 
 
   - Para las variables su tipo será determinado dentro del scope donde estas son válidas.
 
-- Para los parámetros su tipo será determinado dentro del cuerpo de la función o cuando esta función sea llamada a traves de una operacion de dispatch.
+- Para los parámetros su tipo será determinado dentro del cuerpo de la función o cuando esta función sea llamada a través de una operacion de dispatch.
 
-- Para los retornos de funciones, su tipo será determinado con su expresión y los llamados a dicha función a traves de una operacion de dispatch.
+- Para los retornos de funciones, su tipo será determinado con su expresión y los llamados a dicha función a través de una operacion de dispatch.
 
-- En las expresiones if-then-else o case-of asignan automáticamente el tipo `Object` debido a la complejidad que supone la operacion `join` en estas expresiones.
+- En las expresiones if-then-else o case-of asignan automáticamente el tipo `Object` si al menos una de sus ramificaciones devuelve una expresión que no tiene tipo definido (`AUTO_TYPE`), en caso contrario asignará el `join` de las ramificaciones.
 
 ##### 1.3.1 Ejemplos de casos factibles para la inferencia
 
