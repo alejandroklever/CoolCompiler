@@ -143,8 +143,14 @@ class Executor:
 
     @visitor.when(ast.LetNode)
     def visit(self, node: ast.LetNode, scope: Scope):
-        for _id, _, _expr in node.declarations:
+        default = {'String': '', 'Int': 0, 'Bool': False}
+        for _id, _type, _expr in node.declarations:
+
             instance = self.visit(_expr, scope.create_child()) if _expr is not None else VoidInstance()
+
+            if _expr is None and _type in default:
+                instance = Instance(self.context.get_type(_type), default[_type])
+
             scope.define_variable(_id, instance.type).instance = instance
 
         return self.visit(node.expr, scope.create_child())

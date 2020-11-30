@@ -247,22 +247,22 @@ class Scope:
         self.children.append(child)
         return child
 
-    def define_variable(self, vname: str, vtype: Type) -> VariableInfo:
-        info = VariableInfo(vname, vtype)
-        self.locals[vname] = info
+    def define_variable(self, var_name: str, var_type: Type) -> VariableInfo:
+        info = VariableInfo(var_name, var_type)
+        self.locals[var_name] = info
         return info
 
-    def find_variable(self, vname: str) -> Optional[VariableInfo]:
+    def find_variable(self, var_name: str) -> Optional[VariableInfo]:
         try:
-            return self.locals[vname]
+            return self.locals[var_name]
         except KeyError:
-            return self.parent.find_variable(vname) if self.parent is not None else None
+            return self.parent.find_variable(var_name) if self.parent is not None else None
 
-    def is_defined(self, vname) -> bool:
-        return self.find_variable(vname) is not None
+    def is_defined(self, var_name) -> bool:
+        return self.find_variable(var_name) is not None
 
-    def is_local(self, vname: str) -> bool:
-        return vname in self.locals
+    def is_local(self, var_name: str) -> bool:
+        return var_name in self.locals
 
     def clear(self):
         self.children = []
