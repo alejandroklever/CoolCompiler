@@ -1,0 +1,1 @@
+DependencyError: Circular class dependency involving class A.
