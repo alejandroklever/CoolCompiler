@@ -6,9 +6,9 @@ import cool.semantics.visitor as visitor
 from cool.semantics.utils.scope import Context, Type, SemanticError
 
 
-def topological_ordering(program_node: ast.ProgramNode,
-                         context: Context,
-                         errors: List[str]) -> ast.ProgramNode:
+def topological_sorting(program_node: ast.ProgramNode,
+                        context: Context,
+                        errors: List[str]) -> ast.ProgramNode:
     """Set an order in the program node of de ast such that for all class A with parent B, class B is before A in the
     list, if in the process is detected a cycle an error is added to the `error` parameter
 

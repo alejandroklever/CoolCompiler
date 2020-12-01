@@ -27,7 +27,7 @@ La inferencia de tipos de nuestro proyecto detecta para cada atributo, variable,
 
 **Algoritmo :** Durante el recorrido del AST será construido un grafo dirigido cuyos nodos encerrarán el concepto de las expresiones marcadas como `AUTO_TYPE` y las aristas representan las dependencias entre las expresiones de estos nodos para inferir su tipo. Sea `E1` una expresión cuyo tipo estático es marcado como `AUTO_TYPE`, y sea `E2` una expresión a partir de a cual se puede inferir el tipo de estático de `E1` entonces en el grafo existirá la arista `<E2, E1>`. Una vez construido el árbol se comenzará una cadena de expansión de tipos estáticos de la forma `E1, E2, ..., En` donde `Ej` se infiere de `Ei` con `1 < j = i + 1 <= n` y `E1` es una expresión con tipo estático definido, al cual llamaremos átomo. Cuando todos los átomos se hayan propagado a través del grafo los nodos que no hayan podido ser resueltos serán marcados como tipos `Object` al ser esta la clase mas general del lenguaje.
 
-**Implementación :** Para eso creamos una estructura llamada `DependencyGraph` donde podemos crear nodos como una estructura llamada `DependencyNode` y arcos entre ellos. La estructura `DependencyGraph` consiste en un `OrderedDict` de nodos contra lista de adyacencia. Esta lista de adyacencia contiene los nodos a los cuales la llave propagar su tipo, estos nodos de la lista tienen un orden y esto es fundamental para el algoritmo de solución de inferencia. Si tenemos un caso `{x: [y, z]}` donde `x`, `y`, `z` son nodos, entonces el algoritmo determinará el tipo de `y` y `z` antes de continuar con todas sus cadenas de expansión, por lo que si `z` forma parte de una cadena de expansión de `y` entonces `y` no propagará su tipo a `z` ya que `x` lo hizo antes (un BFS simple). Una vez tenemos un arbol abarcador del BFS buscamos el próximo nodo con tipo definido que no fue visitado y comenzamos un nuevo BFS desde el
+**Implementación :** Para esto creamos una estructura llamada `DependencyGraph` donde podemos crear nodos como una estructura llamada `DependencyNode` y arcos entre ellos. La estructura `DependencyGraph` consiste en un `OrderedDict` de nodos contra lista de adyacencia. Esta lista de adyacencia contiene los nodos a los cuales la llave propagar su tipo, estos nodos de la lista tienen un orden y esto es fundamental para el algoritmo de solución de inferencia. Si tenemos un caso `{x: [y, z]}` donde `x`, `y`, `z` son nodos, entonces el algoritmo determinará el tipo de `y` y `z` antes de continuar con todas sus cadenas de expansión, por lo que si `z` forma parte de una cadena de expansión de `y` entonces `y` no propagará su tipo a `z` ya que `x` lo hizo antes. Como se puede ver el algoritmo es un BFS simple donde en la cola, al inicio, serán incluido los nodos del grafo que tengan su tipo definido, es decir que no sea `AUTO_TYPE`.
 
 #### 1.2 Nodos de Dependencia
 
@@ -262,11 +262,11 @@ class Main inherits IO {
 
 #### 1.5 Expresiones atómicas
 
-- Valores constantes.
+- Valores constantes (ej: 2, "hello", true).
 
-- Operaciones aritméticas.
+- Operaciones aritméticas, las cuales influyen en sus operandos que sean `AUTO_TYPE`.
 
-- Operaciones lógicas.
+- Operaciones lógicas, las cuales influyen en sus operandos que sean `AUTO_TYPE`.
 
 - Llamdos a funciones con valor de retorno conocido.
 
@@ -276,15 +276,29 @@ class Main inherits IO {
 
 - Bloques donde se puede determinar el tipo de la última expresión.
 
-### 2 Proceso de Semantica
+### 2 Lexing y Parsing
 
-El proceso de semantica está dado de la siguiente forma:
+Para el proceso de lexing y parsing usamos el paquete de Python [PyJapt](https://github.com/alejandroklever/PyJapt.git), cuyos autores coinciden con los de este proyecto.
 
-- Primero realizamos una recoleccion de tipos.
-- Luego pasamos a la construccion los metodos y atributos de estos tipos.
+### 3 Proceso de Semántica
 
+El proceso de semantica es bastante similar al visto en clases prácticas de la 12 a la 15 con algunas pequeñas modificaciones:
 
-### 2 CLI-API
+- Recoleccion de tipos.
+- Construccion los métodos y atributos de los tipos.
+- Comprobamos que no existan dependencias cíclicas con un ordenamiento topológico de los tipos en su árbol de jerarquía
+- Chequeo del la sobreescritura de métodos.
+- Inferencia de tipos.
+- Chequeo de tipos.
+- Ejecución del programa.
+
+Cada uno de estos procesos hace uso del patrón visitor visto en clases prácticas para recorrer el ast y realizar el analisis de cada uno de los procesos.
+
+#### 3.1 Ejecución de código
+
+Para la ejecución hemos creado la abstracción de una instancia de un objeto. Con esto conseguimos en todo momento saber sobre que objecto en memoria estamos ejecutando un método y también tenemos acceso a los valores particulares de sus atributos en todo momento del programa. Para guardar el orden de ejcución de las funciones llevaremos una cola donde cada vez que ocurra un llamado a función colocaremos en el tope de la pila la instancia actual en la que estamos y tomará el control de la ejecución la instancia de la cual realizamos el dispatch. Finalmente cuando termine la ejecución de una función retomará el control del programa la instancia en el tope de la pila. El proceso se retira hasta que la pila esta vacía. Para comenzar ejecución de cualquier programa en `COOL` basta con comenzar con la instrucción `(new Main).main()`.
+
+### 4 CLI-API
 
 Para la cómoda utilizacion del intérprete hemos usado el paquete de python `typer` para crear una api-cli bastante sencilla, basta con ejecutar el comando `python cool --help` y obtendrá como salida lo siguiente:
 
@@ -312,10 +326,6 @@ Se se puede apreciar existen 3 comandos principales:
 
 - En ambos casos se tiene como parámetro adicional el `--verbose` para observar los distintos procesos por los que pasa el proceso de compilación.
 
-### 3 Lexing y Parsing
-
-Para el proceso de lexing y parsing usamos el paquete de Python [PyJapt](https://github.com/alejandroklever/PyJapt.git), cuyos autores coinciden con los de este proyecto.
-
-### 4 Testing
+### 5 Testing
 
 En la carpeta `tests` se encuentra las carpetas `execution`, `inference`, `lexer`, `parser`, `semantic` las cuales contienen casos de pruebas. Para correr todas las pruebas basta con hacer `pytest tests` y se probaran todos los casos menos los de la carpeta `execution`, la cual contiene programa en cool que deberan ser ejecutados a mano usando la cli-api de nuestro intérprete.

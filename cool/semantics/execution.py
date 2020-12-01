@@ -42,7 +42,10 @@ def in_string(obj, context):
 
 
 def in_int(obj, context):
-    return Instance(context.get_type('Int'), int(input()))
+    try:
+        return Instance(context.get_type('Int'), int(input()))
+    except ValueError:
+        raise ExecutionError(err.INPUT_INT_ERROR)
 
 
 def length(obj, context):

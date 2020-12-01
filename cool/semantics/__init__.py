@@ -6,5 +6,5 @@ from .formatter import CodeBuilder, Formatter
 from .type_builder import TypeBuilder
 from .type_collector import TypeCollector
 from .formatter import Formatter
-from .overridden import OverriddenMethodChecker, topological_ordering
+from .overridden import OverriddenMethodChecker, topological_sorting
 from .type_checker import TypeChecker

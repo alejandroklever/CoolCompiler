@@ -10,7 +10,7 @@ sys.path.append(os.getcwd())
 from cool.grammar import serialize_parser_and_lexer
 from cool.lexertab import CoolLexer
 from cool.parsertab import CoolParser
-from cool.semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
+from cool.semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_sorting
 from cool.semantics.execution import Executor, ExecutionError
 from cool.semantics.formatter import CodeBuilder
 from cool.semantics.type_inference import InferenceChecker
@@ -23,7 +23,7 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
     TypeCollector(context, errors).visit(ast)
     TypeBuilder(context, errors).visit(ast)
     declarations = ast.declarations
-    topological_ordering(ast, context, errors)
+    topological_sorting(ast, context, errors)
     ast.declarations = declarations
     if not errors:
         OverriddenMethodChecker(context, errors).visit(ast)
@@ -34,6 +34,9 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
 
 def tokenize(file: str, verbose: bool = False):
     path = Path.cwd() / file
+    if not path.exists():
+        typer.echo(f'File {file} does not exist.')
+        exit()
     s = path.open('r').read()
     lexer = CoolLexer()
     tokens = lexer(s)
