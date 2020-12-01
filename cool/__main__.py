@@ -1,12 +1,11 @@
 import os
 import sys
-
-sys.path.append(os.getcwd())
-
 from pathlib import Path
 from typing import List
 
 import typer
+
+sys.path.append(os.getcwd())
 
 from cool.grammar import serialize_parser_and_lexer
 from cool.lexertab import CoolLexer
@@ -26,9 +25,10 @@ def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
     declarations = ast.declarations
     topological_ordering(ast, context, errors)
     ast.declarations = declarations
-    OverriddenMethodChecker(context, errors).visit(ast)
-    InferenceChecker(context, errors).visit(ast, scope)
-    TypeChecker(context, errors).visit(ast, scope)
+    if not errors:
+        OverriddenMethodChecker(context, errors).visit(ast)
+        InferenceChecker(context, errors).visit(ast, scope)
+        TypeChecker(context, errors).visit(ast, scope)
     return ast, scope, context, errors
 
 
@@ -70,7 +70,7 @@ def infer(file: str, verbose: bool = False):
     ast, _ = parse(file, verbose)
 
     if ast is not None:
-        ast, scope, context, errors = check_semantics(ast, Scope(), Context(), [])
+        ast, _, _, errors = check_semantics(ast, Scope(), Context(), [])
         if errors:
             for e in errors:
                 typer.echo(e, err=True)
@@ -82,7 +82,7 @@ def run(file: str, verbose: bool = False):
     ast, parser = parse(file, verbose)
 
     if ast is not None:
-        ast, scope, context, errors = check_semantics(ast, Scope(), Context(), [])
+        ast, _, context, errors = check_semantics(ast, Scope(), Context(), [])
 
         if not errors and not parser.contains_errors:
             try:
@@ -121,6 +121,7 @@ def serialize():
 
     os.remove(lexertab)
     os.remove(parsertab)
+
 
 if __name__ == '__main__':
     app()

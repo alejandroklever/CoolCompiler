@@ -22,7 +22,7 @@ def topological_ordering(program_node: ast.ProgramNode,
 
     types = context.types
 
-    graph: Dict[str, List[str]] = {name: [] for name in types}
+    graph: Dict[str, List[str]] = {name: [] for name in types if name not in ('SELF_TYPE', 'AUTO_TYPE')}
 
     for name, typex in types.items():
         if name in ('Object', 'SELF_TYPE', 'AUTO_TYPE'):
@@ -30,18 +30,24 @@ def topological_ordering(program_node: ast.ProgramNode,
         graph[typex.parent.name].append(name)
 
     order = []
-    visited = {name: False for name in graph}
+    visited = set()
     stack = ['Object']
 
     while stack:
         current_name = stack.pop()
 
-        if visited[current_name]:
+        if current_name in visited:
             errors.append(f'DependencyError: Circular class dependency involving class {current_name}.')
 
-        visited[current_name] = True
+        visited.add(current_name)
         stack += graph[current_name]
         order.append(current_name)
+
+    if len(visited) != len(graph):
+        types_names = set(x for x in context.types if x not in ('SELF_TYPE', 'AUTO_TYPE'))
+        exclude_type_names = types_names - visited
+        errors.append(f'DependencyError: Circular class dependency '
+                      f'involving class {sorted(exclude_type_names, reverse=True).pop()}.')
 
     declarations = {d.id: d for d in program_node.declarations}
     program_node.declarations = [declarations[name] for name in order if

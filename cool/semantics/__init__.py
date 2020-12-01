@@ -2,6 +2,7 @@
 classes defined here follows the visitor pattern using the module visitor, with this we can get a more decoupled
 inspection. """
 
+from .formatter import CodeBuilder, Formatter
 from .type_builder import TypeBuilder
 from .type_collector import TypeCollector
 from .formatter import Formatter
