@@ -23,6 +23,8 @@ INFERENCE_ERROR_METHOD = 'InferenceError: Cannot infer return type for method "%
 
 
 DIVIDE_BY_ZERO = 'ZeroDivisionError: Division by zero.'
-INPUT_INT_ERROR = 'InputError: Expected a number'
+INPUT_INT_ERROR = 'InputError: Expected a number.'
+MAIN_CLASS_NOT_FOUND = 'MainClassNotFound: no Main class in program.'
+MAIN_METHOD_NOT_FOUND = 'MainMethodNotFound: no main method in class Main.'
 VOID_EXPRESSION = 'VoidReferenceError: Object reference not set to an instance of an object.'
 CASE_OF_ERROR = 'CaseOfError: No branch matches wit de dynamic type of the case expression.'

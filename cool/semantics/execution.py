@@ -3,7 +3,7 @@ from typing import Any, Dict
 import cool.semantics.utils.astnodes as ast
 import cool.semantics.utils.errors as err
 import cool.semantics.visitor as visitor
-from cool.semantics.utils.scope import Context, Method, Scope, Type
+from cool.semantics.utils.scope import Context, Method, Scope, Type, SemanticError
 
 
 class ExecutionError(Exception):
@@ -119,6 +119,16 @@ class Executor:
     def visit(self, node: ast.ProgramNode, scope: Scope = None):
         for declaration in node.declarations:
             self.visit(declaration, None)
+
+        try:
+            main_class = self.context.get_type('Main')
+        except SemanticError:
+            raise ExecutionError(err.MAIN_CLASS_NOT_FOUND)
+
+        try:
+            main_class.get_method('main')
+        except SemanticError:
+            raise ExecutionError(err.MAIN_METHOD_NOT_FOUND)
 
         execution_node = ast.MethodCallNode('main', [], ast.InstantiateNode('Main'))
         self.visit(execution_node, scope)
