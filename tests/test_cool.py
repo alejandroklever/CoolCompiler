@@ -1,11 +1,8 @@
 from pathlib import Path
 from typing import List, Tuple
 
-from cool.lexertab import CoolLexer
-from cool.parsertab import CoolParser
-from cool.semantics import TypeCollector, TypeBuilder, OverriddenMethodChecker, TypeChecker, topological_ordering
-from cool.semantics.formatter import CodeBuilder
-from cool.semantics.type_inference import InferenceChecker
+from cool import check_semantics, CoolLexer, CoolParser
+from cool.semantics import CodeBuilder
 from cool.semantics.utils.scope import Context, Scope
 
 
@@ -19,18 +16,6 @@ def parse(tokens):
     parser = CoolParser()
     ast = parser(tokens)
     return ast, parser
-
-
-def check_semantics(ast, scope: Scope, context: Context, errors: List[str]):
-    TypeCollector(context, errors).visit(ast)
-    TypeBuilder(context, errors).visit(ast)
-    declarations = ast.declarations
-    topological_ordering(ast, context, errors)
-    ast.declarations = declarations
-    OverriddenMethodChecker(context, errors).visit(ast)
-    InferenceChecker(context, errors).visit(ast, scope)
-    TypeChecker(context, errors).visit(ast, scope)
-    return ast, scope, context, errors
 
 
 def get_programs(folder_name: str) -> Tuple[List[str], List[str]]:
