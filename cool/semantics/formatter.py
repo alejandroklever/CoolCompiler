@@ -77,7 +77,7 @@ class CodeBuilder:
         expr = self.visit(node.expr)
         cases = '\n'.join(cases)
 
-        return '    ' * tabs + f'case {expr} of \n{cases}\n' + '    ' * tabs + 'esac'
+        return '    ' * tabs + f'case {expr} of\n{cases}\n' + '    ' * tabs + 'esac'
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, tabs: int = 0):
