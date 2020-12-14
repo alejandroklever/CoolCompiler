@@ -1,9 +1,9 @@
 class Main {
-    main (): Object {
+    main (): Int {
         0
     };
 
-    f (a: Int, b: Int): Object {
+    f (a: Int, b: Int): Int {
         if a = 1
         then
             b
@@ -12,7 +12,7 @@ class Main {
         fi
     };
 
-    g (a: Int, b: Int): Object {
+    g (a: Int, b: Int): Int {
         if b = 1
         then
             a

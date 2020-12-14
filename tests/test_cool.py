@@ -45,8 +45,7 @@ def test_lexer():
 def test_parser():
     programs, results = get_programs('parser')
 
-    total = 20
-    for code, result in zip(programs[total - 1:total], results[total - 1:total]):
+    for code, result in zip(programs, results):
         tokens, _ = tokenize(code)
         ast, parser = parse(tokens)
         assert parser.contains_errors and '\n'.join(parser.errors) == result
@@ -65,7 +64,6 @@ def test_inference():
 def test_semantic():
     programs, results = get_programs('semantic')
 
-    print(programs)
     for code, result in zip(programs, results):
         tokens, _ = tokenize(code)
         ast, parser = parse(tokens)

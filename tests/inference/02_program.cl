@@ -1,6 +1,6 @@
 class Main {
     main (): Object {
-        0
+        let x: Int <- (new Ackermann).ackermann(5, 6) in x
     };
 }
 

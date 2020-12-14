@@ -33,8 +33,9 @@ DependencyNode hierarchy
 
 All nodes has an implementation of the method update that handle how to update the type by it's dependencies
 """
+from abc import ABC
 from collections import OrderedDict, deque
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Deque
 
 import cool.semantics.utils.astnodes as ast
 import cool.semantics.utils.errors as err
@@ -46,18 +47,22 @@ from cool.semantics.utils.scope import (Attribute, Context, ErrorType, Method,
 class DependencyNode:
     type: Type
 
-    def update(self, typex):
+    def update(self, _type: Type) -> None:
         raise NotImplementedError()
 
     def __repr__(self):
         return str(self)
 
+    @property
+    def is_ready(self):
+        return True
+
 
 class AtomNode(DependencyNode):
-    def __init__(self, typex: Type):
-        self.type: Type = typex
+    def __init__(self, atom_type: Type):
+        self.type: Type = atom_type
 
-    def update(self, typex: Type):
+    def update(self, _type: Type) -> None:
         pass
 
     def __str__(self):
@@ -69,20 +74,20 @@ class VariableInfoNode(DependencyNode):
         self.type: Type = var_type
         self.variable_info: VariableInfo = variable_info
 
-    def update(self, typex):
-        self.type = self.variable_info.type = typex
+    def update(self, _type):
+        self.type = self.variable_info.type = _type
 
     def __str__(self):
         return f'VarInfo({self.variable_info.name}, {self.type.name})'
 
 
 class AttributeNode(DependencyNode):
-    def __init__(self, var_type: Type, attribute: Attribute):
-        self.type: Type = var_type
+    def __init__(self, attr_type: Type, attribute: Attribute):
+        self.type: Type = attr_type
         self.attribute: Attribute = attribute
 
-    def update(self, typex):
-        self.type = self.attribute.type = typex
+    def update(self, _type: Type) -> None:
+        self.type = self.attribute.type = _type
 
     def __str__(self):
         return f'Attr({self.attribute.name}, {self.type.name})'
@@ -94,23 +99,44 @@ class ParameterNode(DependencyNode):
         self.method: Method = method
         self.index: int = index
 
-    def update(self, typex):
-        self.type = self.method.param_types[self.index] = typex
+    def update(self, _type):
+        self.type = self.method.param_types[self.index] = _type
 
     def __str__(self):
         return f'Param({self.method.name}, {self.index}, {self.type.name})'
 
 
 class ReturnTypeNode(DependencyNode):
-    def __init__(self, typex: Type, method: Method):
-        self.type: Type = typex
+    def __init__(self, ret_type: Type, method: Method):
+        self.type: Type = ret_type
         self.method: Method = method
 
-    def update(self, typex):
-        self.type = self.method.return_type = typex
+    def update(self, _type):
+        self.type = self.method.return_type = _type
 
     def __str__(self):
         return f'Return({self.method.name}, {self.type.name})'
+
+
+class BranchedNode(DependencyNode, ABC):
+    _is_ready: bool = False
+    branches: List[DependencyNode] = []
+
+    @property
+    def is_ready(self) -> bool:
+        return all(x.is_ready for x in self.branches)
+
+
+class ConditionalNode(BranchedNode):
+    def __init__(self, conditional_type, then_branch, else_branch):
+        self.type = conditional_type
+        self.branches = [then_branch, else_branch]
+
+    def update(self, _type: Type) -> None:
+        self.type = _type
+
+    def __str__(self):
+        return f'ConditionalNode({self.type.name})'
 
 
 class DependencyGraph:
@@ -129,34 +155,31 @@ class DependencyGraph:
         self.add_node(other)
 
     def update_dependencies(self, default_type: Type = None):
-        queue = deque(key for key in self.dependencies if isinstance(key, AtomNode))
-        visited: Set[DependencyNode] = set()
+        queue: Deque[DependencyNode] = deque(node for node in self.dependencies if isinstance(node, AtomNode))
+        visited: Set[DependencyNode] = set(queue)
 
+        print(queue, '\n')
         while queue:
-            current_node = queue.popleft()
-            if current_node in visited:
+            node = queue.popleft()
+
+            if not node.is_ready:
                 continue
-            self.update_dependencies_of(current_node, current_node.type, visited)
+
+            for adj in self.dependencies[node]:
+                if adj not in visited:
+                    visited.add(adj)
+                    adj.update(node.type)
+                    queue.append(adj)
+
+        branched_node = [node for node in self.dependencies if isinstance(node, ConditionalNode) and not node.is_ready]
 
         if default_type is not None:
             for node in self.dependencies:
                 if node not in visited:
                     node.update(default_type)
 
-    def update_dependencies_of(self, node: DependencyNode, typex: Type, visited: Set[DependencyNode]):
-        queue = deque([node] + self.dependencies[node])
-        while queue:
-            current_node = queue.popleft()
-
-            if current_node in visited:
-                continue
-
-            current_node.update(typex)
-            visited.add(current_node)
-            queue.extend(self.dependencies[current_node])
-
     def __str__(self):
-        return '{\n' + '\n'.join(f'{key}: {value}' for key, value in self.dependencies.items()) + '}'
+        return '{\n\t' + '\n\t'.join(f'{key}: {value}' for key, value in self.dependencies.items()) + '\n}'
 
 
 class InferenceChecker:
@@ -205,7 +228,14 @@ class InferenceChecker:
         for item in node.declarations:
             self.visit(item, scope.create_child())
 
+        print(self.graph)
+        print()
+
         self.graph.update_dependencies(default_type=self.context.get_type('Object'))
+
+        print(self.graph)
+        print()
+
         InferenceTypeSubstitute(self.context, self.errors).visit(node, scope)
 
     @visitor.when(ast.ClassDeclarationNode)
@@ -347,7 +377,18 @@ class InferenceChecker:
         if isinstance(then_node, AtomNode) and isinstance(else_node, AtomNode):
             return AtomNode(then_node.type.join(else_node.type))
 
-        return AtomNode(self.context.get_type('Object'))  # For now
+        conditional_node = ConditionalNode(self.context.get_type('AUTO_TYPE'), then_node, else_node)
+        if isinstance(then_node, AtomNode) and not isinstance(else_node, AtomNode):
+            self.graph.add_edge(then_node, else_node)
+        elif not isinstance(then_node, AtomNode) and isinstance(else_node, AtomNode):
+            self.graph.add_edge(else_node, then_node)
+        else:
+            self.graph.add_edge(then_node, else_node)
+            self.graph.add_edge(else_node, then_node)
+            self.graph.add_edge(conditional_node, then_node)
+            self.graph.add_edge(conditional_node, else_node)
+
+        return conditional_node
 
     @visitor.when(ast.WhileNode)
     def visit(self, node: ast.WhileNode, scope: Scope):
@@ -494,7 +535,7 @@ class InferenceChecker:
 
 
 class InferenceTypeSubstitute:
-    def __init__(self, context: Context, errors: List[str] = []):
+    def __init__(self, context: Context, errors: List[str]):
         self.context: Context = context
         self.errors: List[str] = errors
         self.current_type: Optional[Type] = None

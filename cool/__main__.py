@@ -77,7 +77,7 @@ def infer(file: str, verbose: bool = False):
         if errors:
             for e in errors:
                 typer.echo(e, err=True)
-        typer.echo(CodeBuilder().visit(ast, 0))
+        # typer.echo(CodeBuilder().visit(ast, 0))
 
 
 @app.command()

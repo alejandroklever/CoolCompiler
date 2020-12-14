@@ -1,5 +1,5 @@
 class Main {
-    main (): Object {
+    main (): AUTO_TYPE {
         0
     };
 
