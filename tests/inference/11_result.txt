@@ -1,0 +1,52 @@
+class Main {
+    main (): Object {
+        0
+    };
+
+    f (): Animal {
+        let x: Dog <- (new Dog) in
+            case x of
+                m : Mammal =>
+                    case m of
+                        c : Cat =>
+                            self.create_cat();
+                        d : Dog =>
+                            self.create_dog();
+                    esac;
+                r : Reptile =>
+                    self.create_reptile();
+            esac
+    };
+
+    create_dog (): Dog {
+        (new Dog)
+    };
+
+    create_cat (): Cat {
+        (new Cat)
+    };
+
+    create_reptile (): Reptile {
+        (new Reptile)
+    };
+}
+
+class Animal {
+
+}
+
+class Mammal inherits Animal {
+
+}
+
+class Reptile inherits Animal {
+
+}
+
+class Dog inherits Mammal {
+
+}
+
+class Cat inherits Mammal {
+
+}

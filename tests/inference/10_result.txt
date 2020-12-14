@@ -1,0 +1,51 @@
+class Main {
+    main (): Object {
+        0
+    };
+
+    f (): Animal {
+        if true
+        then
+            if true
+            then
+                self.create_dog()
+            else
+                self.create_cat()
+            fi
+        else
+            self.create_reptile()
+        fi
+    };
+
+    create_dog (): Dog {
+        (new Dog)
+    };
+
+    create_cat (): Cat {
+        (new Cat)
+    };
+
+    create_reptile (): Reptile {
+        (new Reptile)
+    };
+}
+
+class Animal {
+
+}
+
+class Mammal inherits Animal {
+
+}
+
+class Reptile inherits Animal {
+
+}
+
+class Dog inherits Mammal {
+
+}
+
+class Cat inherits Mammal {
+
+}

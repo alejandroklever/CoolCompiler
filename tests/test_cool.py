@@ -71,4 +71,4 @@ def test_semantic():
         assert (parser.contains_errors or errors) and '\n'.join(parser.errors + errors) == result
 
 
-test_semantic()
+test_inference()

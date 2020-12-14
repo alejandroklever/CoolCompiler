@@ -4,13 +4,15 @@ class Main {
     };
 
     f(): AUTO_TYPE {
-        if true then
-            if true then
-                create_dog()
-            else
-                create_cat() fi
-        else
-            create_reptile() fi
+        let x: AUTO_TYPE <- new Dog in
+            case x of
+                m: Mammal =>
+                    case m of
+                        c: Cat => create_cat();
+                        d: Dog => create_dog();
+                    esac;
+                r: Reptile => create_reptile();
+            esac
     };
 
     create_dog(): AUTO_TYPE {

@@ -119,12 +119,11 @@ class ReturnTypeNode(DependencyNode):
 
 
 class BranchedNode(DependencyNode, ABC):
-    _is_ready: bool = False
     branches: List[DependencyNode] = []
 
     @property
     def is_ready(self) -> bool:
-        return all(x.is_ready for x in self.branches)
+        return all(x.type.name != 'AUTO_TYPE' for x in self.branches)
 
 
 class ConditionalNode(BranchedNode):
@@ -137,6 +136,18 @@ class ConditionalNode(BranchedNode):
 
     def __str__(self):
         return f'ConditionalNode({self.type.name})'
+
+
+class CaseOfNode(BranchedNode):
+    def __init__(self, _type, branches):
+        self.type = _type
+        self.branches = branches
+
+    def update(self, _type: Type) -> None:
+        self.type = _type
+
+    def __str__(self):
+        return f'CaseOfNode({self.type.name})'
 
 
 class DependencyGraph:
@@ -158,7 +169,6 @@ class DependencyGraph:
         queue: Deque[DependencyNode] = deque(node for node in self.dependencies if isinstance(node, AtomNode))
         visited: Set[DependencyNode] = set(queue)
 
-        print(queue, '\n')
         while queue:
             node = queue.popleft()
 
@@ -167,11 +177,25 @@ class DependencyGraph:
 
             for adj in self.dependencies[node]:
                 if adj not in visited:
-                    visited.add(adj)
                     adj.update(node.type)
-                    queue.append(adj)
+                    visited.add(adj)
+                    if not isinstance(adj, BranchedNode):
+                        queue.append(adj)
 
-        branched_node = [node for node in self.dependencies if isinstance(node, ConditionalNode) and not node.is_ready]
+        for node in self.dependencies:
+            if isinstance(node, BranchedNode) and node.is_ready:
+                node.update(Type.multi_join([x.type for x in node.branches]))
+
+        queue = deque(node for node in self.dependencies
+                      if isinstance(node, BranchedNode) and node.type.name != 'AUTO_TYPE')
+        visited.update(queue)
+        while queue:
+            node = queue.popleft()
+            for adj in self.dependencies[node]:
+                if adj not in visited:
+                    adj.update(node.type)
+                    visited.add(adj)
+                    queue.append(adj)
 
         if default_type is not None:
             for node in self.dependencies:
@@ -228,14 +252,9 @@ class InferenceChecker:
         for item in node.declarations:
             self.visit(item, scope.create_child())
 
-        print(self.graph)
-        print()
-
+        # print(self.graph, '\n')
         self.graph.update_dependencies(default_type=self.context.get_type('Object'))
-
-        print(self.graph)
-        print()
-
+        # print(self.graph, '\n')
         InferenceTypeSubstitute(self.context, self.errors).visit(node, scope)
 
     @visitor.when(ast.ClassDeclarationNode)
@@ -399,16 +418,31 @@ class InferenceChecker:
     @visitor.when(ast.SwitchCaseNode)
     def visit(self, node: ast.SwitchCaseNode, scope: Scope):
         self.visit(node.expr, scope)
-        case_expressions = []
+
+        defined_nodes = []
+        not_defined_nodes = []
+        case_nodes = []
         for _id, _type, _expr in node.cases:
             new_scope = scope.create_child()
             var_info = new_scope.define_variable(_id, self.context.get_type(_type))
             self.variables[var_info] = VariableInfoNode(var_info.type, var_info)
-            case_expressions.append(self.visit(_expr, new_scope))
 
-        if any(e.type.name == 'AUTO_TYPE' for e in case_expressions):
-            return AtomNode(self.context.get_type('Object'))
-        return AtomNode(Type.multi_join([e.type for e in case_expressions]))
+            case_node = self.visit(_expr, new_scope)
+            if isinstance(case_node, AtomNode):
+                defined_nodes.append(case_node)
+            else:
+                not_defined_nodes.append(case_node)
+            case_nodes.append(case_node)
+
+        if any(e.type.name == 'AUTO_TYPE' for e in case_nodes):
+            if defined_nodes:
+                t = Type.multi_join([x.type for x in defined_nodes])
+                for x in not_defined_nodes:
+                    self.graph.add_edge(AtomNode(t), x)
+            case_of_node = CaseOfNode(self.context.get_type('AUTO_TYPE'), case_nodes)
+            self.graph.add_node(case_of_node)
+            return case_of_node
+        return AtomNode(Type.multi_join([e.type for e in case_nodes]))
 
     @visitor.when(ast.MethodCallNode)
     def visit(self, node: ast.MethodCallNode, scope: Scope):
